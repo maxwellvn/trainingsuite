@@ -1,27 +1,14 @@
 import { NextRequest } from 'next/server';
-import mongoose from 'mongoose';
 import connectDB from '@/lib/db/connect';
-import Course from '@/models/Course';
 import Module from '@/models/Module';
 import Lesson from '@/models/Lesson';
 import { optionalAuth, AuthenticatedRequest } from '@/middleware/auth';
 import { successResponse, errorResponse, handleApiError } from '@/lib/utils/api-response';
 import { UserRole } from '@/types';
+import { findCourseByIdOrSlug } from '@/lib/utils/find-course';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
-}
-
-// Helper to find course by ID or slug
-// Helper to find course by ID or slug
-function findCourseByIdOrSlug(idOrSlug: string) {
-  const isValidObjectId = mongoose.Types.ObjectId.isValid(idOrSlug);
-
-  if (isValidObjectId) {
-    return Course.findById(idOrSlug);
-  }
-
-  return Course.findOne({ slug: idOrSlug });
 }
 
 // GET - Get course curriculum (modules and lessons)
@@ -36,6 +23,8 @@ async function getHandler(request: AuthenticatedRequest, { params }: RouteParams
       return errorResponse('Course not found', 404);
     }
 
+    const courseId = course._id;
+
     // Check access for unpublished courses
     const isOwner = request.user?.id === course.instructor.toString();
     const isAdmin = request.user?.role === UserRole.ADMIN;
@@ -46,7 +35,7 @@ async function getHandler(request: AuthenticatedRequest, { params }: RouteParams
     }
 
     // Get modules with their lessons
-    const modules = await Module.find({ course: id }).sort({ order: 1 });
+    const modules = await Module.find({ course: courseId }).sort({ order: 1 });
 
     const curriculum = await Promise.all(
       modules.map(async (module) => {

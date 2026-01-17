@@ -1,12 +1,12 @@
 import { NextRequest } from 'next/server';
 import { Types } from 'mongoose';
 import connectDB from '@/lib/db/connect';
-import Course from '@/models/Course';
 import Module from '@/models/Module';
 import Lesson from '@/models/Lesson';
 import Enrollment from '@/models/Enrollment';
 import { withAuth, AuthenticatedRequest } from '@/middleware/auth';
 import { successResponse, errorResponse, handleApiError } from '@/lib/utils/api-response';
+import { findCourseByIdOrSlug } from '@/lib/utils/find-course';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -18,15 +18,17 @@ async function getHandler(request: AuthenticatedRequest, { params }: RouteParams
     const { id } = await params;
     await connectDB();
 
-    const course = await Course.findById(id);
+    const course = await findCourseByIdOrSlug(id);
 
     if (!course) {
       return errorResponse('Course not found', 404);
     }
 
+    const courseId = course._id;
+
     const enrollment = await Enrollment.findOne({
       user: request.user!.id,
-      course: id,
+      course: courseId,
     });
 
     if (!enrollment) {
@@ -34,7 +36,7 @@ async function getHandler(request: AuthenticatedRequest, { params }: RouteParams
     }
 
     // Get all modules and lessons
-    const modules = await Module.find({ course: id }).sort({ order: 1 });
+    const modules = await Module.find({ course: courseId }).sort({ order: 1 });
     const moduleIds = modules.map((m) => m._id);
     const lessons = await Lesson.find({
       module: { $in: moduleIds },

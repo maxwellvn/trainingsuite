@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server';
-import mongoose from 'mongoose';
 import connectDB from '@/lib/db/connect';
 import Course from '@/models/Course';
 import Enrollment from '@/models/Enrollment';
@@ -9,21 +8,10 @@ import { validateBody } from '@/middleware/validate';
 import { createRatingSchema } from '@/lib/validations/engagement';
 import { successResponse, errorResponse, handleApiError, paginatedResponse } from '@/lib/utils/api-response';
 import { getPaginationParams } from '@/lib/utils/pagination';
+import { findCourseByIdOrSlug } from '@/lib/utils/find-course';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
-}
-
-// Helper to find course by ID or slug
-// Helper to find course by ID or slug
-function findCourseByIdOrSlug(idOrSlug: string) {
-  const isValidObjectId = mongoose.Types.ObjectId.isValid(idOrSlug);
-
-  if (isValidObjectId) {
-    return Course.findById(idOrSlug);
-  }
-
-  return Course.findOne({ slug: idOrSlug });
 }
 
 // GET - Get ratings for a course
@@ -38,21 +26,23 @@ async function getHandler(request: AuthenticatedRequest, { params }: RouteParams
       return errorResponse('Course not found', 404);
     }
 
+    const courseId = course._id;
+
     const { searchParams } = new URL(request.url);
     const { page, limit, skip } = getPaginationParams(searchParams);
 
     const [ratings, total] = await Promise.all([
-      Rating.find({ course: course._id })
+      Rating.find({ course: courseId })
         .populate('user', 'name avatar')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
-      Rating.countDocuments({ course: id }),
+      Rating.countDocuments({ course: courseId }),
     ]);
 
     // Calculate rating stats
     const ratingStats = await Rating.aggregate([
-      { $match: { course: course._id } },
+      { $match: { course: courseId } },
       {
         $group: {
           _id: '$rating',
@@ -94,16 +84,18 @@ async function postHandler(request: AuthenticatedRequest, { params }: RouteParam
 
     await connectDB();
 
-    const course = await Course.findById(id);
+    const course = await findCourseByIdOrSlug(id);
 
     if (!course) {
       return errorResponse('Course not found', 404);
     }
 
+    const courseId = course._id;
+
     // Check if user is enrolled
     const enrollment = await Enrollment.findOne({
       user: request.user!.id,
-      course: id,
+      course: courseId,
     });
 
     if (!enrollment) {
@@ -113,7 +105,7 @@ async function postHandler(request: AuthenticatedRequest, { params }: RouteParam
     // Check for existing rating
     const existingRating = await Rating.findOne({
       user: request.user!.id,
-      course: id,
+      course: courseId,
     });
 
     let rating;
@@ -131,7 +123,7 @@ async function postHandler(request: AuthenticatedRequest, { params }: RouteParam
       rating = await Rating.create({
         ...validation.data,
         user: request.user!.id,
-        course: id,
+        course: courseId,
       });
       rating = await Rating.findById(rating._id).populate('user', 'name avatar');
       isNew = true;
@@ -139,7 +131,7 @@ async function postHandler(request: AuthenticatedRequest, { params }: RouteParam
 
     // Recalculate course rating
     const ratingAgg = await Rating.aggregate([
-      { $match: { course: course._id } },
+      { $match: { course: courseId } },
       {
         $group: {
           _id: null,
@@ -150,7 +142,7 @@ async function postHandler(request: AuthenticatedRequest, { params }: RouteParam
     ]);
 
     if (ratingAgg.length > 0) {
-      await Course.findByIdAndUpdate(id, {
+      await Course.findByIdAndUpdate(courseId, {
         rating: Math.round(ratingAgg[0].avgRating * 10) / 10,
         ratingCount: ratingAgg[0].count,
       });

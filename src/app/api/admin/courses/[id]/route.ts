@@ -1,37 +1,29 @@
 import { NextRequest } from 'next/server';
 import connectDB from '@/lib/db/connect';
 import Course from '@/models/Course';
-import { withInstructor, AuthenticatedRequest, optionalAuth } from '@/middleware/auth';
+import { withAdmin, AuthenticatedRequest } from '@/middleware/auth';
 import { validateBody } from '@/middleware/validate';
 import { updateCourseSchema } from '@/lib/validations/course';
 import { successResponse, errorResponse, handleApiError } from '@/lib/utils/api-response';
 import { createSlug } from '@/lib/utils/slugify';
-import { CourseStatus, UserRole } from '@/types';
+import { CourseStatus } from '@/types';
 import { findCourseByIdOrSlug } from '@/lib/utils/find-course';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-// GET - Get course by ID or slug
+// GET - Get course by ID (admin)
 async function getHandler(request: AuthenticatedRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
     await connectDB();
 
     const course = await findCourseByIdOrSlug(id)
-      .populate('instructor', 'name avatar bio')
+      .populate('instructor', 'name avatar bio email')
       .populate('category', 'name slug');
 
     if (!course) {
-      return errorResponse('Course not found', 404);
-    }
-
-    // Check access for unpublished courses
-    const isOwner = request.user?.id === course.instructor._id.toString();
-    const isAdmin = request.user?.role === UserRole.ADMIN;
-
-    if (!course.isPublished && !isOwner && !isAdmin) {
       return errorResponse('Course not found', 404);
     }
 
@@ -41,7 +33,7 @@ async function getHandler(request: AuthenticatedRequest, { params }: RouteParams
   }
 }
 
-// PUT - Update course
+// PUT - Update course (admin)
 async function putHandler(request: AuthenticatedRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
@@ -58,14 +50,6 @@ async function putHandler(request: AuthenticatedRequest, { params }: RouteParams
       return errorResponse('Course not found', 404);
     }
 
-    // Check permission
-    const isOwner = request.user!.id === course.instructor.toString();
-    const isAdmin = request.user!.role === UserRole.ADMIN;
-
-    if (!isOwner && !isAdmin) {
-      return errorResponse('Not authorized to update this course', 403);
-    }
-
     const updateData: Record<string, unknown> = { ...validation.data };
 
     // Update slug if title changes
@@ -77,6 +61,16 @@ async function putHandler(request: AuthenticatedRequest, { params }: RouteParams
     if (validation.data.isPublished && !course.isPublished) {
       updateData.publishedAt = new Date();
       updateData.status = CourseStatus.PUBLISHED;
+    }
+
+    // Handle status changes
+    if (validation.data.status) {
+      if (validation.data.status === CourseStatus.PUBLISHED && !course.isPublished) {
+        updateData.isPublished = true;
+        updateData.publishedAt = new Date();
+      } else if (validation.data.status === CourseStatus.ARCHIVED) {
+        updateData.isPublished = false;
+      }
     }
 
     const updatedCourse = await Course.findByIdAndUpdate(
@@ -93,7 +87,7 @@ async function putHandler(request: AuthenticatedRequest, { params }: RouteParams
   }
 }
 
-// DELETE - Delete course
+// DELETE - Delete course (admin only)
 async function deleteHandler(request: AuthenticatedRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
@@ -105,11 +99,6 @@ async function deleteHandler(request: AuthenticatedRequest, { params }: RoutePar
       return errorResponse('Course not found', 404);
     }
 
-    // Only admin can delete
-    if (request.user!.role !== UserRole.ADMIN) {
-      return errorResponse('Only admins can delete courses', 403);
-    }
-
     await Course.findByIdAndDelete(course._id);
 
     return successResponse(null, 'Course deleted successfully');
@@ -119,13 +108,13 @@ async function deleteHandler(request: AuthenticatedRequest, { params }: RoutePar
 }
 
 export async function GET(request: NextRequest, context: RouteParams) {
-  return optionalAuth(request, (req) => getHandler(req, context));
+  return withAdmin(request, (req) => getHandler(req, context));
 }
 
 export async function PUT(request: NextRequest, context: RouteParams) {
-  return withInstructor(request, (req) => putHandler(req, context));
+  return withAdmin(request, (req) => putHandler(req, context));
 }
 
 export async function DELETE(request: NextRequest, context: RouteParams) {
-  return withInstructor(request, (req) => deleteHandler(req, context));
+  return withAdmin(request, (req) => deleteHandler(req, context));
 }

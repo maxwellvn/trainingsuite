@@ -1,12 +1,12 @@
 import { NextRequest } from 'next/server';
 import connectDB from '@/lib/db/connect';
-import Course from '@/models/Course';
 import Module from '@/models/Module';
 import { withInstructor, AuthenticatedRequest, optionalAuth } from '@/middleware/auth';
 import { validateBody } from '@/middleware/validate';
 import { createModuleSchema } from '@/lib/validations/course';
 import { successResponse, errorResponse, handleApiError } from '@/lib/utils/api-response';
 import { UserRole } from '@/types';
+import { findCourseByIdOrSlug } from '@/lib/utils/find-course';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -15,15 +15,16 @@ interface RouteParams {
 // GET - Get modules for a course
 async function getHandler(request: AuthenticatedRequest, { params }: RouteParams) {
   try {
-    const { id: courseId } = await params;
+    const { id } = await params;
     await connectDB();
 
-    const course = await Course.findById(courseId);
+    const course = await findCourseByIdOrSlug(id);
 
     if (!course) {
       return errorResponse('Course not found', 404);
     }
 
+    const courseId = course._id;
     const isOwner = request.user?.id === course.instructor.toString();
     const isAdmin = request.user?.role === UserRole.ADMIN;
 
@@ -42,7 +43,7 @@ async function getHandler(request: AuthenticatedRequest, { params }: RouteParams
 // POST - Create module
 async function postHandler(request: AuthenticatedRequest, { params }: RouteParams) {
   try {
-    const { id: courseId } = await params;
+    const { id } = await params;
     const validation = await validateBody(request, createModuleSchema);
     if (!validation.success) {
       return validation.response;
@@ -50,11 +51,13 @@ async function postHandler(request: AuthenticatedRequest, { params }: RouteParam
 
     await connectDB();
 
-    const course = await Course.findById(courseId);
+    const course = await findCourseByIdOrSlug(id);
 
     if (!course) {
       return errorResponse('Course not found', 404);
     }
+
+    const courseId = course._id;
 
     // Check permission
     const isOwner = request.user!.id === course.instructor.toString();

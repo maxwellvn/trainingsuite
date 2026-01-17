@@ -1,6 +1,5 @@
 import { NextRequest } from 'next/server';
 import connectDB from '@/lib/db/connect';
-import Course from '@/models/Course';
 import Payment from '@/models/Payment';
 import Enrollment from '@/models/Enrollment';
 import SiteConfig from '@/models/SiteConfig';
@@ -9,6 +8,7 @@ import { validateBody } from '@/middleware/validate';
 import { initializePaymentSchema } from '@/lib/validations/payment';
 import { successResponse, errorResponse, handleApiError } from '@/lib/utils/api-response';
 import { PaymentStatus } from '@/types';
+import { findCourseByIdOrSlug } from '@/lib/utils/find-course';
 
 // POST - Initialize payment
 async function postHandler(request: AuthenticatedRequest) {
@@ -18,7 +18,7 @@ async function postHandler(request: AuthenticatedRequest) {
       return validation.response;
     }
 
-    const { courseId, paymentMethod, currency } = validation.data;
+    const { courseId: courseIdOrSlug, paymentMethod, currency } = validation.data;
 
     await connectDB();
 
@@ -28,11 +28,13 @@ async function postHandler(request: AuthenticatedRequest) {
       return errorResponse('Payments are currently disabled', 400);
     }
 
-    const course = await Course.findById(courseId);
+    const course = await findCourseByIdOrSlug(courseIdOrSlug);
 
     if (!course) {
       return errorResponse('Course not found', 404);
     }
+
+    const courseId = course._id;
 
     if (!course.isPublished) {
       return errorResponse('Course is not available for purchase', 400);

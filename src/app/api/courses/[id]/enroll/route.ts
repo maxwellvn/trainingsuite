@@ -1,12 +1,13 @@
 import { NextRequest } from 'next/server';
 import connectDB from '@/lib/db/connect';
-import Course from '@/models/Course';
 import Enrollment from '@/models/Enrollment';
 import Payment from '@/models/Payment';
 import Notification from '@/models/Notification';
+import Course from '@/models/Course';
 import { withAuth, AuthenticatedRequest } from '@/middleware/auth';
 import { successResponse, errorResponse, handleApiError } from '@/lib/utils/api-response';
 import { EnrollmentStatus, NotificationType, PaymentStatus } from '@/types';
+import { findCourseByIdOrSlug } from '@/lib/utils/find-course';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -18,11 +19,13 @@ async function postHandler(request: AuthenticatedRequest, { params }: RouteParam
     const { id } = await params;
     await connectDB();
 
-    const course = await Course.findById(id).populate('instructor', 'name');
+    const course = await findCourseByIdOrSlug(id).populate('instructor', 'name');
 
     if (!course) {
       return errorResponse('Course not found', 404);
     }
+
+    const courseId = course._id;
 
     if (!course.isPublished) {
       return errorResponse('Course is not available for enrollment', 400);
@@ -31,7 +34,7 @@ async function postHandler(request: AuthenticatedRequest, { params }: RouteParam
     // Check if already enrolled
     const existingEnrollment = await Enrollment.findOne({
       user: request.user!.id,
-      course: id,
+      course: courseId,
     });
 
     if (existingEnrollment) {
@@ -43,7 +46,7 @@ async function postHandler(request: AuthenticatedRequest, { params }: RouteParam
       // Check for completed payment
       const payment = await Payment.findOne({
         user: request.user!.id,
-        course: id,
+        course: courseId,
         status: PaymentStatus.COMPLETED,
       });
 
@@ -55,7 +58,7 @@ async function postHandler(request: AuthenticatedRequest, { params }: RouteParam
     // Create enrollment
     const enrollment = await Enrollment.create({
       user: request.user!.id,
-      course: id,
+      course: courseId,
       status: EnrollmentStatus.ACTIVE,
       progress: 0,
       completedLessons: [],
@@ -63,7 +66,7 @@ async function postHandler(request: AuthenticatedRequest, { params }: RouteParam
     });
 
     // Update course enrollment count
-    await Course.findByIdAndUpdate(id, { $inc: { enrollmentCount: 1 } });
+    await Course.findByIdAndUpdate(courseId, { $inc: { enrollmentCount: 1 } });
 
     // Create notification
     await Notification.create({
@@ -71,14 +74,14 @@ async function postHandler(request: AuthenticatedRequest, { params }: RouteParam
       type: NotificationType.COURSE_ENROLLED,
       title: 'Enrollment Successful',
       message: `You have successfully enrolled in "${course.title}"`,
-      link: `/courses/${id}`,
+      link: `/courses/${course.slug || courseId}`,
     });
 
     return successResponse(
       {
         enrollment: {
           _id: enrollment._id,
-          course: id,
+          course: courseId,
           status: enrollment.status,
           progress: enrollment.progress,
           startedAt: enrollment.startedAt,
