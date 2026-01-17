@@ -42,6 +42,10 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
       type: String,
       maxlength: [500, 'Bio cannot exceed 500 characters'],
     },
+    title: {
+      type: String,
+      maxlength: [100, 'Title cannot exceed 100 characters'],
+    },
     phone: {
       type: String,
       trim: true,

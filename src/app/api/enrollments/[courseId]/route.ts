@@ -3,6 +3,7 @@ import connectDB from '@/lib/db/connect';
 import Enrollment from '@/models/Enrollment';
 import { withAuth, AuthenticatedRequest } from '@/middleware/auth';
 import { successResponse, errorResponse, handleApiError } from '@/lib/utils/api-response';
+import { findCourseByIdOrSlug } from '@/lib/utils/find-course';
 
 interface RouteParams {
   params: Promise<{ courseId: string }>;
@@ -14,9 +15,15 @@ async function getHandler(request: AuthenticatedRequest, { params }: RouteParams
     const { courseId } = await params;
     await connectDB();
 
+    // Support both ID and slug lookup
+    const course = await findCourseByIdOrSlug(courseId);
+    if (!course) {
+      return errorResponse('Course not found', 404);
+    }
+
     const enrollment = await Enrollment.findOne({
       user: request.user!.id,
-      course: courseId,
+      course: course._id,
     }).populate({
       path: 'course',
       select: 'title slug thumbnail instructor duration',

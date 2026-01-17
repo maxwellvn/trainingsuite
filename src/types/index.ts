@@ -54,6 +54,7 @@ export interface IUser {
   role: UserRole;
   avatar?: string;
   bio?: string;
+  title?: string;
   phone?: string;
   isVerified: boolean;
   verificationToken?: string;
