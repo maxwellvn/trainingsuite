@@ -24,6 +24,9 @@ ENV NODE_ENV=production
 # Build the application
 RUN npm run build
 
+# Bundle seed script into a single file for production use
+RUN npx esbuild src/scripts/seed.ts --bundle --platform=node --outfile=dist/seed.js --external:mongoose --external:bcryptjs --external:dotenv
+
 # Stage 3: Runner
 FROM node:20-alpine AS runner
 WORKDIR /app
@@ -39,6 +42,10 @@ RUN adduser --system --uid 1001 nextjs
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
+
+# Copy seed script and install its dependencies
+COPY --from=builder /app/dist/seed.js ./seed.js
+RUN npm install --no-save mongoose bcryptjs dotenv
 
 # Create uploads directory with proper permissions
 RUN mkdir -p ./public/uploads/materials ./public/uploads/thumbnails ./public/uploads/avatars ./public/uploads/certificates
