@@ -64,7 +64,9 @@ async function getHandler(request: AuthenticatedRequest, { params }: RouteParams
             _id: lesson._id,
             title: lesson.title,
             description: lesson.description,
+            type: lesson.type || 'video',
             videoDuration: lesson.videoDuration,
+            duration: lesson.videoDuration, // Include both for frontend compatibility
             order: lesson.order,
             isFree: lesson.isFree,
             isPublished: lesson.isPublished,

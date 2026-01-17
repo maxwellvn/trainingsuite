@@ -79,6 +79,7 @@ export const createLessonSchema = z.object({
     .string()
     .max(50000, 'Content cannot exceed 50000 characters')
     .optional(),
+  type: z.enum(['video', 'text', 'quiz']).default('video'),
   videoUrl: z.string().url('Invalid video URL').optional(),
   videoDuration: z.number().int().min(0).optional(),
   order: z.number().int().min(0).optional(),

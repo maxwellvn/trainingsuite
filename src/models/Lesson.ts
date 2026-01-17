@@ -17,6 +17,11 @@ const lessonSchema = new Schema<ILesson>(
       type: String,
       maxlength: [50000, 'Content cannot exceed 50000 characters'],
     },
+    type: {
+      type: String,
+      enum: ['video', 'text', 'quiz'],
+      default: 'video',
+    },
     videoUrl: {
       type: String,
     },

@@ -119,6 +119,7 @@ export interface ILesson {
   title: string;
   description?: string;
   content?: string;
+  type: 'video' | 'text' | 'quiz';
   videoUrl?: string;
   videoDuration?: number; // in seconds
   module: Types.ObjectId;
