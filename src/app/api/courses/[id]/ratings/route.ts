@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import mongoose from 'mongoose';
 import connectDB from '@/lib/db/connect';
 import Course from '@/models/Course';
 import Enrollment from '@/models/Enrollment';
@@ -13,13 +14,25 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
+// Helper to find course by ID or slug
+// Helper to find course by ID or slug
+function findCourseByIdOrSlug(idOrSlug: string) {
+  const isValidObjectId = mongoose.Types.ObjectId.isValid(idOrSlug);
+
+  if (isValidObjectId) {
+    return Course.findById(idOrSlug);
+  }
+
+  return Course.findOne({ slug: idOrSlug });
+}
+
 // GET - Get ratings for a course
 async function getHandler(request: AuthenticatedRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
     await connectDB();
 
-    const course = await Course.findById(id);
+    const course = await findCourseByIdOrSlug(id);
 
     if (!course) {
       return errorResponse('Course not found', 404);
@@ -29,7 +42,7 @@ async function getHandler(request: AuthenticatedRequest, { params }: RouteParams
     const { page, limit, skip } = getPaginationParams(searchParams);
 
     const [ratings, total] = await Promise.all([
-      Rating.find({ course: id })
+      Rating.find({ course: course._id })
         .populate('user', 'name avatar')
         .sort({ createdAt: -1 })
         .skip(skip)

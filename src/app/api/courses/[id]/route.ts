@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import mongoose from 'mongoose';
 import connectDB from '@/lib/db/connect';
 import Course from '@/models/Course';
 import { withInstructor, AuthenticatedRequest, optionalAuth } from '@/middleware/auth';
@@ -12,13 +13,29 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-// GET - Get course by ID
+// Helper to find course by ID or slug
+// Helper to find course by ID or slug
+function findCourseByIdOrSlug(idOrSlug: string) {
+  // Check if it's a valid ObjectId (must be 24 hex characters)
+  const isValidObjectId = mongoose.Types.ObjectId.isValid(idOrSlug);
+
+  // Example log to debug (will show in server logs)
+  console.log(`[API] finding course: ${idOrSlug}, isValidId: ${isValidObjectId}`);
+
+  if (isValidObjectId) {
+    return Course.findById(idOrSlug);
+  }
+
+  return Course.findOne({ slug: idOrSlug });
+}
+
+// GET - Get course by ID or slug
 async function getHandler(request: AuthenticatedRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
     await connectDB();
 
-    const course = await Course.findById(id)
+    const course = await findCourseByIdOrSlug(id)
       .populate('instructor', 'name avatar bio')
       .populate('category', 'name slug');
 
@@ -51,7 +68,7 @@ async function putHandler(request: AuthenticatedRequest, { params }: RouteParams
 
     await connectDB();
 
-    const course = await Course.findById(id);
+    const course = await findCourseByIdOrSlug(id);
 
     if (!course) {
       return errorResponse('Course not found', 404);
@@ -98,7 +115,7 @@ async function deleteHandler(request: AuthenticatedRequest, { params }: RoutePar
     const { id } = await params;
     await connectDB();
 
-    const course = await Course.findById(id);
+    const course = await findCourseByIdOrSlug(id);
 
     if (!course) {
       return errorResponse('Course not found', 404);
