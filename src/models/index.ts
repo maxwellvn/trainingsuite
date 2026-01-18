@@ -10,9 +10,6 @@ export { default as Material } from './Material';
 
 // Progress & Assessment
 export { default as Enrollment } from './Enrollment';
-export { default as Quiz } from './Quiz';
-export { default as Question } from './Question';
-export { default as QuizAttempt } from './QuizAttempt';
 export { default as Certificate } from './Certificate';
 
 // Engagement

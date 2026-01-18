@@ -113,8 +113,10 @@ export async function uploadFile(
     const buffer = Buffer.from(bytes);
     await writeFile(filePath, buffer);
 
-    // Return file info
-    const fileUrl = `/uploads/${folder}/${fileName}`;
+    // Return file info with absolute URL
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || 'http://localhost:3001';
+    const baseUrl = apiBaseUrl.replace(/\/$/, '');
+    const fileUrl = `${baseUrl}/uploads/${folder}/${fileName}`;
 
     return {
       success: true,
@@ -128,7 +130,7 @@ export async function uploadFile(
     console.error('File upload error:', error);
     return {
       success: false,
-      error: 'Failed to upload file',
+      error: `Failed to upload file: ${error instanceof Error ? error.message : String(error)}`,
     };
   }
 }
@@ -140,16 +142,32 @@ export async function uploadBuffer(
   mimeType: string
 ): Promise<UploadResult | UploadError> {
   try {
+    console.log(`[UploadBuffer] Starting upload for folder: ${folder}, fileName: ${fileName}, buffer size: ${buffer.length}`);
+
     // Create upload directory if it doesn't exist
     const uploadDir = path.join(process.cwd(), 'public', 'uploads', folder);
+    console.log(`[UploadBuffer] Upload directory: ${uploadDir}`);
+    
     if (!existsSync(uploadDir)) {
+      console.log(`[UploadBuffer] Creating directory: ${uploadDir}`);
       await mkdir(uploadDir, { recursive: true });
+    } else {
+      console.log(`[UploadBuffer] Directory exists: ${uploadDir}`);
     }
 
     const filePath = path.join(uploadDir, fileName);
+    console.log(`[UploadBuffer] File path: ${filePath}`);
+    
+    console.log(`[UploadBuffer] Writing buffer to file...`);
     await writeFile(filePath, buffer);
+    console.log(`[UploadBuffer] File written successfully`);
 
-    const fileUrl = `/uploads/${folder}/${fileName}`;
+    // Get API base URL from environment or use default
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || 'http://localhost:3001';
+    // Remove trailing slash if present
+    const baseUrl = apiBaseUrl.replace(/\/$/, '');
+    const fileUrl = `${baseUrl}/uploads/${folder}/${fileName}`;
+    console.log(`[UploadBuffer] File URL: ${fileUrl}`);
 
     return {
       success: true,
@@ -160,10 +178,11 @@ export async function uploadBuffer(
       mimeType,
     };
   } catch (error) {
-    console.error('Buffer upload error:', error);
+    console.error('[UploadBuffer] Error:', error);
+    console.error('[UploadBuffer] Error stack:', (error as Error).stack);
     return {
       success: false,
-      error: 'Failed to save file',
+      error: `Failed to save file: ${error instanceof Error ? error.message : String(error)}`,
     };
   }
 }

@@ -1,6 +1,62 @@
 import PDFDocument from 'pdfkit';
+import path from 'path';
+import fs from 'fs';
 import { uploadBuffer } from './file-upload';
 import { generateCertificateNumber } from './slugify';
+
+// Monkey-patch fs.readFileSync to handle PDFKit's font loading
+const initializePdfKit = () => {
+  try {
+    // Store the original readFileSync
+    const originalReadFileSync = fs.readFileSync;
+    
+    // Create a patched version that handles PDFKit font requests
+    (fs as any).readFileSync = function(filePath: fs.PathOrFileDescriptor, options?: any) {
+      const pathStr = String(filePath);
+      
+      // Check if this is a PDFKit font file request
+      if (pathStr.includes('.afm') && (pathStr.includes('/ROOT/') || pathStr.includes('pdfkit'))) {
+        // Return a minimal AFM file content for standard fonts
+        const fontName = path.basename(pathStr, '.afm');
+        const minimalAfm = `StartFontMetrics 4.1
+FontName ${fontName}
+EncodingScheme AdobeStandardEncoding
+FullName ${fontName}
+FamilyName ${fontName}
+Weight Medium
+ItalicAngle 0
+IsFixedPitch false
+CharacterSet ExtendedRoman
+FontBBox -50 -200 1000 900
+UnderlinePosition -100
+UnderlineThickness 50
+Version 001.000
+Notice Copyright (c) 1985, 1987, 1989, 1990, 1991, 1992, 1993, 1997 Adobe Systems Incorporated. All Rights Reserved.
+CapHeight 700
+XHeight 500
+Ascender 800
+Descender -200
+StdHW 50
+StdVW 50
+StartCharMetrics 1
+C 32 ; WX 250 ; N space ; B 0 0 0 0 ;
+EndCharMetrics
+EndFontMetrics`;
+        
+        return minimalAfm;
+      }
+      
+      // For all other files, use the original readFileSync
+      return originalReadFileSync.call(fs, filePath, options);
+    };
+    
+    console.log('[Certificate Generator] PDFKit fs monkey-patch installed');
+    return true;
+  } catch (error) {
+    console.error('[Certificate Generator] Failed to initialize PDFKit:', error);
+    return false;
+  }
+};
 
 interface CertificateData {
   userName: string;
@@ -35,6 +91,9 @@ export async function generateCertificatePDF(
         instructorName = 'Course Instructor',
         organizationName = 'Rhapsody International Missions',
       } = data;
+
+      // Initialize PDFKit before creating document (fixes Next.js path issues)
+      initializePdfKit();
 
       // Create PDF document (landscape orientation)
       const doc = new PDFDocument({

@@ -13,8 +13,6 @@ import Course from '../models/Course';
 import Module from '../models/Module';
 import Lesson from '../models/Lesson';
 import Material from '../models/Material';
-import Quiz from '../models/Quiz';
-import Question from '../models/Question';
 import Forum from '../models/Forum';
 import ForumPost from '../models/ForumPost';
 import SiteConfig from '../models/SiteConfig';
@@ -47,8 +45,6 @@ async function clearDatabase() {
     Module.deleteMany({}),
     Lesson.deleteMany({}),
     Material.deleteMany({}),
-    Quiz.deleteMany({}),
-    Question.deleteMany({}),
     Forum.deleteMany({}),
     ForumPost.deleteMany({}),
     SiteConfig.deleteMany({}),
@@ -169,6 +165,8 @@ async function seedCourses(
       instructor: instructor?._id,
       category: crusadeCategory?._id,
       status: CourseStatus.PUBLISHED,
+      isPublished: true,
+      publishedAt: new Date(),
       isPaid: false,
       price: 0,
       tags: ['crusade', 'planning', 'evangelism'],
@@ -188,6 +186,8 @@ async function seedCourses(
       instructor: instructor?._id,
       category: outreachCategory?._id,
       status: CourseStatus.PUBLISHED,
+      isPublished: true,
+      publishedAt: new Date(),
       isPaid: true,
       price: 2500,
       currency: 'NGN',
@@ -208,6 +208,8 @@ async function seedCourses(
       instructor: users.find((u: any) => u.email === 'instructor2@rhapsody.org')?._id,
       category: categories.find((c: any) => c.slug === 'cell-ministry')?._id,
       status: CourseStatus.PUBLISHED,
+      isPublished: true,
+      publishedAt: new Date(),
       isPaid: false,
       price: 0,
       tags: ['cell group', 'leadership', 'discipleship'],
@@ -337,71 +339,6 @@ async function seedModulesAndLessons(courses: mongoose.Document[]) {
   return { modules, lessons };
 }
 
-async function seedQuizzes(lessons: mongoose.Document[]) {
-  console.log('Seeding quizzes...');
-
-  if (lessons.length === 0) return [];
-
-  const quiz = await Quiz.create({
-    title: 'Crusade Basics Quiz',
-    description: 'Test your understanding of crusade fundamentals',
-    lesson: lessons[0]._id,
-    passingScore: 70,
-    timeLimit: 15,
-    isPublished: true,
-  });
-
-  const questions = await Question.insertMany([
-    {
-      quiz: quiz._id,
-      question: 'What is the primary purpose of a crusade?',
-      options: [
-        'Entertainment',
-        'Evangelism and soul winning',
-        'Fundraising',
-        'Social gathering',
-      ],
-      correctAnswer: 1,
-      points: 10,
-      explanation:
-        'Crusades are primarily designed for evangelism and reaching souls with the gospel.',
-      order: 0,
-    },
-    {
-      quiz: quiz._id,
-      question: 'Which of these is essential for crusade planning?',
-      options: [
-        'Clear vision',
-        'Proper venue',
-        'Committed team',
-        'All of the above',
-      ],
-      correctAnswer: 3,
-      points: 10,
-      explanation:
-        'All these elements are essential for successful crusade planning.',
-      order: 1,
-    },
-    {
-      quiz: quiz._id,
-      question: 'Follow-up is not important after a crusade.',
-      options: ['True', 'False'],
-      correctAnswer: 1,
-      points: 10,
-      explanation:
-        'Follow-up is crucial to ensure new converts are properly discipled.',
-      order: 2,
-    },
-  ]);
-
-  await Quiz.findByIdAndUpdate(quiz._id, {
-    questions: questions.map((q) => q._id),
-  });
-
-  console.log(`Created 1 quiz with ${questions.length} questions`);
-  return [quiz];
-}
-
 async function seedForums(courses: mongoose.Document[], users: mongoose.Document[]) {
   console.log('Seeding forums...');
 
@@ -519,7 +456,6 @@ async function seed() {
     const categories = await seedCategories();
     const courses = await seedCourses(users, categories);
     const { lessons } = await seedModulesAndLessons(courses);
-    await seedQuizzes(lessons);
     await seedForums(courses, users);
     await seedSiteConfig();
     await seedAnnouncements(users);

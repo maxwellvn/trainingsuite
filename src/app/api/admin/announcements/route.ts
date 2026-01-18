@@ -1,11 +1,14 @@
 import { NextRequest } from 'next/server';
 import connectDB from '@/lib/db/connect';
 import Announcement from '@/models/Announcement';
+import User from '@/models/User';
+import Notification from '@/models/Notification';
 import { withAdmin, AuthenticatedRequest } from '@/middleware/auth';
 import { validateBody } from '@/middleware/validate';
 import { createAnnouncementSchema } from '@/lib/validations/admin';
 import { successResponse, handleApiError, paginatedResponse } from '@/lib/utils/api-response';
 import { getPaginationParams } from '@/lib/utils/pagination';
+import { NotificationType } from '@/types';
 
 // GET - List announcements (admin only)
 async function getHandler(request: AuthenticatedRequest) {
@@ -56,6 +59,32 @@ async function postHandler(request: AuthenticatedRequest) {
       'createdBy',
       'name'
     );
+
+    // Send notifications to all users
+    try {
+      const allUsers = await User.find({ isActive: { $ne: false } }).select('_id');
+
+      if (allUsers.length > 0) {
+        const notifications = allUsers.map((user) => ({
+          user: user._id,
+          type: NotificationType.NEW_ANNOUNCEMENT,
+          title: announcement.title,
+          message: announcement.content.substring(0, 200) + (announcement.content.length > 200 ? '...' : ''),
+          link: '/announcements',
+          isRead: false,
+          metadata: {
+            announcementId: announcement._id,
+            priority: announcement.priority,
+          },
+        }));
+
+        await Notification.insertMany(notifications);
+        console.log(`Sent announcement notification to ${allUsers.length} users`);
+      }
+    } catch (notificationError) {
+      // Log error but don't fail the announcement creation
+      console.error('Failed to send announcement notifications:', notificationError);
+    }
 
     return successResponse(populatedAnnouncement, 'Announcement created successfully', 201);
   } catch (error) {

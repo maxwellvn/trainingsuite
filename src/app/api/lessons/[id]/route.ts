@@ -4,11 +4,12 @@ import Course from '@/models/Course';
 import Module from '@/models/Module';
 import Lesson from '@/models/Lesson';
 import Enrollment from '@/models/Enrollment';
+import Notification from '@/models/Notification';
 import { withInstructor, AuthenticatedRequest, optionalAuth } from '@/middleware/auth';
 import { validateBody } from '@/middleware/validate';
 import { updateLessonSchema } from '@/lib/validations/course';
 import { successResponse, errorResponse, handleApiError } from '@/lib/utils/api-response';
-import { UserRole, EnrollmentStatus } from '@/types';
+import { UserRole, EnrollmentStatus, NotificationType } from '@/types';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -114,11 +115,47 @@ async function putHandler(request: AuthenticatedRequest, { params }: RouteParams
       });
     }
 
+    // Check if lesson is being published (was unpublished, now published)
+    const isBeingPublished = !lesson.isPublished && validation.data.isPublished === true;
+
     const updatedLesson = await Lesson.findByIdAndUpdate(
       id,
       { $set: validation.data },
       { new: true, runValidators: true }
     );
+
+    // Notify enrolled users if lesson is being published (new content available)
+    if (isBeingPublished) {
+      const enrollments = await Enrollment.find({
+        course: course._id,
+        status: { $in: [EnrollmentStatus.ACTIVE, EnrollmentStatus.COMPLETED] },
+      });
+
+      // Create notifications for all enrolled users
+      const notifications = enrollments.map((enrollment) => ({
+        user: enrollment.user,
+        type: NotificationType.NEW_COURSE_CONTENT,
+        title: 'New Lesson Available',
+        message: `A new lesson "${updatedLesson!.title}" is now available in "${course.title}"`,
+        link: `/courses/${course.slug || course._id}/learn`,
+      }));
+
+      if (notifications.length > 0) {
+        await Notification.insertMany(notifications);
+      }
+
+      // Update completed enrollments to ACTIVE (they have new content to complete)
+      await Enrollment.updateMany(
+        {
+          course: course._id,
+          status: EnrollmentStatus.COMPLETED,
+        },
+        {
+          $set: { status: EnrollmentStatus.ACTIVE },
+          $unset: { completedAt: 1 },
+        }
+      );
+    }
 
     return successResponse(updatedLesson, 'Lesson updated successfully');
   } catch (error) {

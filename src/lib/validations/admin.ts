@@ -40,8 +40,8 @@ export const createAnnouncementSchema = z.object({
     .min(10, 'Content must be at least 10 characters')
     .max(5000, 'Content cannot exceed 5000 characters'),
   priority: z.enum(['low', 'medium', 'high']).default('medium'),
-  startsAt: z.string().datetime().optional(),
-  expiresAt: z.string().datetime().optional(),
+  startsAt: z.string().optional(),
+  expiresAt: z.string().optional(),
 });
 
 export const updateAnnouncementSchema = createAnnouncementSchema.partial().extend({

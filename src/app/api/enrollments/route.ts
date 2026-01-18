@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server';
 import connectDB from '@/lib/db/connect';
 import Enrollment from '@/models/Enrollment';
+import '@/models/Course';
+import '@/models/User';
 import { withAuth, AuthenticatedRequest } from '@/middleware/auth';
 import { successResponse, handleApiError, paginatedResponse } from '@/lib/utils/api-response';
 import { getPaginationParams } from '@/lib/utils/pagination';

@@ -19,7 +19,7 @@ const lessonSchema = new Schema<ILesson>(
     },
     type: {
       type: String,
-      enum: ['video', 'text', 'quiz'],
+      enum: ['video', 'text'],
       default: 'video',
     },
     videoUrl: {

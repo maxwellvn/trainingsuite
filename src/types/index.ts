@@ -40,6 +40,7 @@ export enum NotificationType {
   LIVE_SESSION_REMINDER = 'live_session_reminder',
   LIVE_SESSION_STARTED = 'live_session_started',
   NEW_ANNOUNCEMENT = 'new_announcement',
+  NEW_COURSE_CONTENT = 'new_course_content',
   PAYMENT_SUCCESS = 'payment_success',
   FORUM_REPLY = 'forum_reply',
   COMMENT_REPLY = 'comment_reply',
@@ -120,7 +121,7 @@ export interface ILesson {
   title: string;
   description?: string;
   content?: string;
-  type: 'video' | 'text' | 'quiz';
+  type: 'video' | 'text';
   videoUrl?: string;
   videoDuration?: number; // in seconds
   module: Types.ObjectId;
@@ -156,45 +157,6 @@ export interface IEnrollment {
   expiresAt?: Date;
   createdAt: Date;
   updatedAt: Date;
-}
-
-// Quiz Types
-export interface IQuiz {
-  _id: Types.ObjectId;
-  title: string;
-  description?: string;
-  lesson: Types.ObjectId;
-  passingScore: number; // percentage
-  timeLimit?: number; // in minutes
-  isPublished: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface IQuestion {
-  _id: Types.ObjectId;
-  quiz: Types.ObjectId;
-  question: string;
-  options: string[];
-  correctAnswer: number; // index
-  points: number;
-  explanation?: string;
-  order: number;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface IQuizAttempt {
-  _id: Types.ObjectId;
-  user: Types.ObjectId;
-  quiz: Types.ObjectId;
-  answers: { questionId: Types.ObjectId; selectedAnswer: number }[];
-  score: number;
-  totalPoints: number;
-  passed: boolean;
-  timeTaken: number; // in seconds
-  completedAt: Date;
-  createdAt: Date;
 }
 
 // Certificate Types

@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import connectDB from '@/lib/db/connect';
 import Course from '@/models/Course';
+import '@/models/Category'; // Required for populate
 import { withInstructor, AuthenticatedRequest, optionalAuth } from '@/middleware/auth';
 import { validateBody } from '@/middleware/validate';
 import { createCourseSchema } from '@/lib/validations/course';
