@@ -30,7 +30,13 @@ async function getHandler(request: AuthenticatedRequest, { params }: RouteParams
     // Increment view count
     await ForumPost.findByIdAndUpdate(id, { $inc: { viewCount: 1 } });
 
-    return successResponse(post);
+    // Add isLiked field if user is authenticated
+    const postObj = post.toObject();
+    if (request.user) {
+      postObj.isLiked = post.likedBy?.some((userId: any) => userId.toString() === request.user!.id) || false;
+    }
+
+    return successResponse(postObj);
   } catch (error) {
     return handleApiError(error);
   }

@@ -39,16 +39,28 @@ async function getHandler(request: AuthenticatedRequest, { params }: RouteParams
       Comment.countDocuments({ post: postId, parent: null }),
     ]);
 
-    // Get replies for each comment
+    // Get replies for each comment and add isLiked field
+    const userId = request.user?.id;
     const commentsWithReplies = await Promise.all(
       comments.map(async (comment) => {
         const replies = await Comment.find({ parent: comment._id })
           .populate('user', 'name avatar')
           .sort({ createdAt: 1 });
 
+        const commentObj = comment.toObject();
+        if (userId) {
+          commentObj.isLiked = comment.likedBy?.some((id: any) => id.toString() === userId) || false;
+        }
+
         return {
-          ...comment.toObject(),
-          replies,
+          ...commentObj,
+          replies: replies.map((reply) => {
+            const replyObj = reply.toObject();
+            if (userId) {
+              replyObj.isLiked = reply.likedBy?.some((id: any) => id.toString() === userId) || false;
+            }
+            return replyObj;
+          }),
         };
       })
     );
