@@ -114,8 +114,9 @@ export async function uploadFile(
     await writeFile(filePath, buffer);
 
     // Return file info with absolute URL
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.AUTH_URL || 'http://localhost:3001';
-    const baseUrl = apiBaseUrl.replace(/\/$/, '');
+    // Use NEXT_PUBLIC_APP_URL or AUTH_URL for the base (not NEXT_PUBLIC_API_URL which includes /api)
+    const apiBaseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.AUTH_URL || 'http://localhost:3001';
+    const baseUrl = apiBaseUrl.replace(/\/$/, '').replace(/\/api$/, '');
     const fileUrl = `${baseUrl}/uploads/${folder}/${fileName}`;
 
     return {
@@ -163,9 +164,10 @@ export async function uploadBuffer(
     console.log(`[UploadBuffer] File written successfully`);
 
     // Get API base URL from environment or use default
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.AUTH_URL || 'http://localhost:3001';
-    // Remove trailing slash if present
-    const baseUrl = apiBaseUrl.replace(/\/$/, '');
+    // Use NEXT_PUBLIC_APP_URL or AUTH_URL for the base (not NEXT_PUBLIC_API_URL which includes /api)
+    const apiBaseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.AUTH_URL || 'http://localhost:3001';
+    // Remove trailing slash and /api suffix if present
+    const baseUrl = apiBaseUrl.replace(/\/$/, '').replace(/\/api$/, '');
     const fileUrl = `${baseUrl}/uploads/${folder}/${fileName}`;
     console.log(`[UploadBuffer] File URL: ${fileUrl}`);
 

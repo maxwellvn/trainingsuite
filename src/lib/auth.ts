@@ -88,8 +88,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
   },
   pages: {
-    signIn: '/login',
-    error: '/login',
+    signIn: `${process.env.FRONTEND_URL || 'https://trainings.movortech.com'}/login`,
+    error: `${process.env.FRONTEND_URL || 'https://trainings.movortech.com'}/login`,
   },
   session: {
     strategy: 'jwt',
