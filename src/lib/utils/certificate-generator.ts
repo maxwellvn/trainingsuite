@@ -130,103 +130,171 @@ export async function generateCertificatePDF(
         }
       });
 
-      // Page dimensions
+      // Page dimensions and layout constants
       const pageWidth = doc.page.width;
       const pageHeight = doc.page.height;
+      const centerX = pageWidth / 2;
+      const margin = 50;
+      const contentWidth = pageWidth - (margin * 2);
 
-      // Draw decorative border
-      doc
-        .rect(30, 30, pageWidth - 60, pageHeight - 60)
-        .lineWidth(3)
-        .stroke('#4F46E5');
+      // Color palette
+      const colors = {
+        primary: '#1a365d',      // Deep navy blue
+        secondary: '#c9a227',    // Gold
+        text: '#2d3748',         // Dark gray
+        textLight: '#718096',    // Medium gray
+        border: '#e2e8f0',       // Light gray
+        accent: '#c9a227',       // Gold accent
+      };
 
+      // Draw elegant outer border
       doc
-        .rect(40, 40, pageWidth - 80, pageHeight - 80)
-        .lineWidth(1)
-        .stroke('#4F46E5');
-
-      // Header decoration
-      doc
-        .moveTo(100, 80)
-        .lineTo(pageWidth - 100, 80)
+        .rect(25, 25, pageWidth - 50, pageHeight - 50)
         .lineWidth(2)
-        .stroke('#10B981');
+        .stroke(colors.secondary);
 
-      // Organization name
+      // Draw inner border
       doc
-        .fontSize(14)
-        .fillColor('#666666')
-        .text(organizationName.toUpperCase(), 0, 100, {
+        .rect(35, 35, pageWidth - 70, pageHeight - 70)
+        .lineWidth(0.5)
+        .stroke(colors.primary);
+
+      // Corner decorations (simple elegant corners)
+      const cornerSize = 20;
+      const cornerOffset = 45;
+
+      // Top-left corner
+      doc.moveTo(cornerOffset, cornerOffset + cornerSize)
+         .lineTo(cornerOffset, cornerOffset)
+         .lineTo(cornerOffset + cornerSize, cornerOffset)
+         .lineWidth(2)
+         .stroke(colors.secondary);
+
+      // Top-right corner
+      doc.moveTo(pageWidth - cornerOffset - cornerSize, cornerOffset)
+         .lineTo(pageWidth - cornerOffset, cornerOffset)
+         .lineTo(pageWidth - cornerOffset, cornerOffset + cornerSize)
+         .lineWidth(2)
+         .stroke(colors.secondary);
+
+      // Bottom-left corner
+      doc.moveTo(cornerOffset, pageHeight - cornerOffset - cornerSize)
+         .lineTo(cornerOffset, pageHeight - cornerOffset)
+         .lineTo(cornerOffset + cornerSize, pageHeight - cornerOffset)
+         .lineWidth(2)
+         .stroke(colors.secondary);
+
+      // Bottom-right corner
+      doc.moveTo(pageWidth - cornerOffset - cornerSize, pageHeight - cornerOffset)
+         .lineTo(pageWidth - cornerOffset, pageHeight - cornerOffset)
+         .lineTo(pageWidth - cornerOffset, pageHeight - cornerOffset - cornerSize)
+         .lineWidth(2)
+         .stroke(colors.secondary);
+
+      // Vertical spacing tracker
+      let currentY = 70;
+
+      // Organization name at top
+      doc
+        .fontSize(11)
+        .fillColor(colors.textLight)
+        .text(organizationName.toUpperCase(), margin, currentY, {
           align: 'center',
-          width: pageWidth,
+          width: contentWidth,
+          characterSpacing: 3,
         });
 
-      // Certificate title
+      currentY += 35;
+
+      // Main title: CERTIFICATE
       doc
-        .fontSize(42)
-        .fillColor('#4F46E5')
-        .text('CERTIFICATE', 0, 130, {
+        .fontSize(48)
+        .fillColor(colors.primary)
+        .text('CERTIFICATE', margin, currentY, {
           align: 'center',
-          width: pageWidth,
+          width: contentWidth,
+          characterSpacing: 6,
         });
 
+      currentY += 55;
+
+      // Subtitle: OF COMPLETION
       doc
-        .fontSize(24)
-        .fillColor('#333333')
-        .text('OF COMPLETION', 0, 180, {
+        .fontSize(18)
+        .fillColor(colors.textLight)
+        .text('OF COMPLETION', margin, currentY, {
           align: 'center',
-          width: pageWidth,
+          width: contentWidth,
+          characterSpacing: 4,
         });
 
-      // Decorative line
+      currentY += 40;
+
+      // Decorative divider line
+      const dividerWidth = 300;
+      const dividerX = centerX - (dividerWidth / 2);
       doc
-        .moveTo(250, 220)
-        .lineTo(pageWidth - 250, 220)
+        .moveTo(dividerX, currentY)
+        .lineTo(dividerX + dividerWidth, currentY)
         .lineWidth(1)
-        .stroke('#CCCCCC');
+        .stroke(colors.secondary);
 
-      // "This is to certify that" text
+      currentY += 30;
+
+      // "This is to certify that"
       doc
-        .fontSize(14)
-        .fillColor('#666666')
-        .text('This is to certify that', 0, 250, {
+        .fontSize(12)
+        .fillColor(colors.textLight)
+        .text('This is to certify that', margin, currentY, {
           align: 'center',
-          width: pageWidth,
+          width: contentWidth,
         });
 
-      // Recipient name
+      currentY += 25;
+
+      // Recipient name (prominent)
       doc
-        .fontSize(32)
-        .fillColor('#1F2937')
-        .text(userName, 0, 280, {
+        .fontSize(36)
+        .fillColor(colors.primary)
+        .text(userName, margin, currentY, {
           align: 'center',
-          width: pageWidth,
+          width: contentWidth,
         });
 
-      // Decorative line under name
-      doc
-        .moveTo(200, 325)
-        .lineTo(pageWidth - 200, 325)
-        .lineWidth(1)
-        .stroke('#4F46E5');
+      currentY += 50;
 
-      // "has successfully completed" text
+      // Line under name
+      const nameLineWidth = 350;
+      const nameLineX = centerX - (nameLineWidth / 2);
       doc
-        .fontSize(14)
-        .fillColor('#666666')
-        .text('has successfully completed the course', 0, 350, {
+        .moveTo(nameLineX, currentY)
+        .lineTo(nameLineX + nameLineWidth, currentY)
+        .lineWidth(0.75)
+        .stroke(colors.secondary);
+
+      currentY += 25;
+
+      // "has successfully completed the course"
+      doc
+        .fontSize(12)
+        .fillColor(colors.textLight)
+        .text('has successfully completed the course', margin, currentY, {
           align: 'center',
-          width: pageWidth,
+          width: contentWidth,
         });
+
+      currentY += 25;
 
       // Course name
       doc
-        .fontSize(24)
-        .fillColor('#4F46E5')
-        .text(courseName, 0, 380, {
+        .fontSize(22)
+        .fillColor(colors.text)
+        .text(courseName, margin, currentY, {
           align: 'center',
-          width: pageWidth,
+          width: contentWidth,
         });
+
+      currentY += 40;
 
       // Completion date
       const formattedDate = completionDate.toLocaleDateString('en-US', {
@@ -236,77 +304,77 @@ export async function generateCertificatePDF(
       });
 
       doc
-        .fontSize(12)
-        .fillColor('#666666')
-        .text(`Completed on ${formattedDate}`, 0, 430, {
+        .fontSize(11)
+        .fillColor(colors.textLight)
+        .text(formattedDate, margin, currentY, {
           align: 'center',
-          width: pageWidth,
+          width: contentWidth,
         });
 
-      // Signature section
-      const signatureY = 480;
+      // Signature section - positioned from bottom
+      const signatureY = pageHeight - 130;
+      const signatureWidth = 180;
+      const signatureSpacing = 200; // Distance from center to each signature center
 
       // Left signature (Instructor)
-      doc
-        .moveTo(120, signatureY)
-        .lineTo(280, signatureY)
-        .lineWidth(1)
-        .stroke('#333333');
+      const leftSigX = centerX - signatureSpacing - (signatureWidth / 2);
 
       doc
-        .fontSize(12)
-        .fillColor('#333333')
-        .text(instructorName, 120, signatureY + 10, {
-          width: 160,
+        .moveTo(leftSigX, signatureY)
+        .lineTo(leftSigX + signatureWidth, signatureY)
+        .lineWidth(0.75)
+        .stroke(colors.text);
+
+      doc
+        .fontSize(11)
+        .fillColor(colors.text)
+        .text(instructorName, leftSigX, signatureY + 8, {
+          width: signatureWidth,
           align: 'center',
         });
 
-      doc
-        .fontSize(10)
-        .fillColor('#666666')
-        .text('Instructor', 120, signatureY + 28, {
-          width: 160,
-          align: 'center',
-        });
-
-      // Right signature (Organization)
-      doc
-        .moveTo(pageWidth - 280, signatureY)
-        .lineTo(pageWidth - 120, signatureY)
-        .lineWidth(1)
-        .stroke('#333333');
-
-      doc
-        .fontSize(12)
-        .fillColor('#333333')
-        .text('Program Director', pageWidth - 280, signatureY + 10, {
-          width: 160,
-          align: 'center',
-        });
-
-      doc
-        .fontSize(10)
-        .fillColor('#666666')
-        .text(organizationName, pageWidth - 280, signatureY + 28, {
-          width: 160,
-          align: 'center',
-        });
-
-      // Certificate number at bottom
       doc
         .fontSize(9)
-        .fillColor('#999999')
-        .text(`Certificate No: ${certificateNumber}`, 0, pageHeight - 60, {
+        .fillColor(colors.textLight)
+        .text('Course Instructor', leftSigX, signatureY + 24, {
+          width: signatureWidth,
           align: 'center',
-          width: pageWidth,
         });
 
-      // Footer decoration
+      // Right signature (Program Director)
+      const rightSigX = centerX + signatureSpacing - (signatureWidth / 2);
+
       doc
-        .moveTo(100, pageHeight - 80)
-        .lineTo(pageWidth - 100, pageHeight - 80)
-        .lineWidth(2)
-        .stroke('#10B981');
+        .moveTo(rightSigX, signatureY)
+        .lineTo(rightSigX + signatureWidth, signatureY)
+        .lineWidth(0.75)
+        .stroke(colors.text);
+
+      doc
+        .fontSize(11)
+        .fillColor(colors.text)
+        .text('Program Director', rightSigX, signatureY + 8, {
+          width: signatureWidth,
+          align: 'center',
+        });
+
+      doc
+        .fontSize(9)
+        .fillColor(colors.textLight)
+        .text(organizationName, rightSigX, signatureY + 24, {
+          width: signatureWidth,
+          align: 'center',
+        });
+
+      // Certificate number at bottom center
+      doc
+        .fontSize(8)
+        .fillColor(colors.textLight)
+        .text(`Certificate ID: ${certificateNumber}`, margin, pageHeight - 55, {
+          align: 'center',
+          width: contentWidth,
+          characterSpacing: 1,
+        });
 
       // Finalize PDF
       doc.end();

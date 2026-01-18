@@ -28,11 +28,9 @@ export const createCourseSchema = z.object({
     .min(20, 'Description must be at least 20 characters')
     .max(5000, 'Description cannot exceed 5000 characters'),
   category: z.string().min(1, 'Category is required'),
-  thumbnail: z.string().url('Invalid thumbnail URL').optional(),
-  previewVideo: z.string().url('Invalid preview video URL').optional(),
-  price: z.number().min(0, 'Price cannot be negative').default(0),
-  isFree: z.boolean().default(true),
+  thumbnail: z.string().optional(),
   level: z.enum(['beginner', 'intermediate', 'advanced']).default('beginner'),
+  duration: z.number().int().min(0).optional(),
   requirements: z.array(z.string()).optional(),
   objectives: z.array(z.string()).optional(),
   tags: z.array(z.string()).optional(),
@@ -41,6 +39,7 @@ export const createCourseSchema = z.object({
 export const updateCourseSchema = createCourseSchema.partial().extend({
   status: z.enum(['draft', 'published', 'archived']).optional(),
   isPublished: z.boolean().optional(),
+  thumbnail: z.string().optional(),
 });
 
 export const createModuleSchema = z.object({

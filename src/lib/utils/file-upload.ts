@@ -113,11 +113,8 @@ export async function uploadFile(
     const buffer = Buffer.from(bytes);
     await writeFile(filePath, buffer);
 
-    // Return file info with absolute URL
-    // Use NEXT_PUBLIC_APP_URL or AUTH_URL for the base (not NEXT_PUBLIC_API_URL which includes /api)
-    const apiBaseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.AUTH_URL || 'http://localhost:3001';
-    const baseUrl = apiBaseUrl.replace(/\/$/, '').replace(/\/api$/, '');
-    const fileUrl = `${baseUrl}/uploads/${folder}/${fileName}`;
+    // Return file info with relative URL (works with frontend proxy)
+    const fileUrl = `/uploads/${folder}/${fileName}`;
 
     return {
       success: true,
@@ -163,12 +160,8 @@ export async function uploadBuffer(
     await writeFile(filePath, buffer);
     console.log(`[UploadBuffer] File written successfully`);
 
-    // Get API base URL from environment or use default
-    // Use NEXT_PUBLIC_APP_URL or AUTH_URL for the base (not NEXT_PUBLIC_API_URL which includes /api)
-    const apiBaseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.AUTH_URL || 'http://localhost:3001';
-    // Remove trailing slash and /api suffix if present
-    const baseUrl = apiBaseUrl.replace(/\/$/, '').replace(/\/api$/, '');
-    const fileUrl = `${baseUrl}/uploads/${folder}/${fileName}`;
+    // Return relative URL (works with frontend proxy)
+    const fileUrl = `/uploads/${folder}/${fileName}`;
     console.log(`[UploadBuffer] File URL: ${fileUrl}`);
 
     return {
