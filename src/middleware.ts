@@ -5,8 +5,11 @@ import type { NextRequest } from 'next/server';
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
+  'https://trainings.movortech.com',
+  'https://api.movortech.com',
   process.env.FRONTEND_URL,
   process.env.NEXTAUTH_URL,
+  process.env.AUTH_URL,
 ].filter(Boolean);
 
 export function middleware(request: NextRequest) {
