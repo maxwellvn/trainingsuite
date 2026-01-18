@@ -23,7 +23,7 @@ async function getHandler(request: AuthenticatedRequest) {
       Enrollment.find(query)
         .populate({
           path: 'course',
-          select: 'title slug thumbnail instructor duration',
+          select: 'title slug thumbnail instructor duration level rating status isPublished',
           populate: {
             path: 'instructor',
             select: 'name avatar',
