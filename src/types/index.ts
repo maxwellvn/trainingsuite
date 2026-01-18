@@ -194,6 +194,8 @@ export interface IForumPost {
   isLocked: boolean;
   viewCount: number;
   commentCount: number;
+  likes: number;
+  likedBy: Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -207,6 +209,8 @@ export interface IComment {
   lesson?: Types.ObjectId;
   parent?: Types.ObjectId;
   isEdited: boolean;
+  likes: number;
+  likedBy: Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
 }

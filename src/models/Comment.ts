@@ -29,6 +29,14 @@ const commentSchema = new Schema<IComment>(
       type: Boolean,
       default: false,
     },
+    likes: {
+      type: Number,
+      default: 0,
+    },
+    likedBy: [{
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+    }],
   },
   {
     timestamps: true,
