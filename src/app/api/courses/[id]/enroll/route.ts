@@ -6,7 +6,7 @@ import Notification from '@/models/Notification';
 import Course from '@/models/Course';
 import { withAuth, AuthenticatedRequest } from '@/middleware/auth';
 import { successResponse, errorResponse, handleApiError } from '@/lib/utils/api-response';
-import { EnrollmentStatus, NotificationType, PaymentStatus } from '@/types';
+import { CourseStatus, EnrollmentStatus, NotificationType, PaymentStatus } from '@/types';
 import { findCourseByIdOrSlug } from '@/lib/utils/find-course';
 
 interface RouteParams {
@@ -27,7 +27,9 @@ async function postHandler(request: AuthenticatedRequest, { params }: RouteParam
 
     const courseId = course._id;
 
-    if (!course.isPublished) {
+    // Check if course is available for enrollment (either isPublished flag or status is published)
+    const isAvailable = course.isPublished || course.status === CourseStatus.PUBLISHED;
+    if (!isAvailable) {
       return errorResponse('Course is not available for enrollment', 400);
     }
 
