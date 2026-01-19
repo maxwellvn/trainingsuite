@@ -7,7 +7,7 @@ import { withAuth, AuthenticatedRequest } from '@/middleware/auth';
 import { validateBody } from '@/middleware/validate';
 import { initializePaymentSchema } from '@/lib/validations/payment';
 import { successResponse, errorResponse, handleApiError } from '@/lib/utils/api-response';
-import { PaymentStatus } from '@/types';
+import { PaymentStatus, CourseStatus } from '@/types';
 import { findCourseByIdOrSlug } from '@/lib/utils/find-course';
 
 // POST - Initialize payment
@@ -36,7 +36,8 @@ async function postHandler(request: AuthenticatedRequest) {
 
     const courseId = course._id;
 
-    if (!course.isPublished) {
+    const isPublished = course.isPublished || course.status === CourseStatus.PUBLISHED;
+    if (!isPublished) {
       return errorResponse('Course is not available for purchase', 400);
     }
 

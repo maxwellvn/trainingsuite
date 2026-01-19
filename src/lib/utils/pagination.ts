@@ -27,6 +27,7 @@ export function getSortParams(
   defaultSort = '-createdAt'
 ): Record<string, 1 | -1> {
   const sortParam = searchParams.get('sort') || defaultSort;
+  const orderParam = searchParams.get('order'); // Support separate order param
   const sortFields = sortParam.split(',');
   const sort: Record<string, 1 | -1> = {};
 
@@ -35,7 +36,12 @@ export function getSortParams(
     const fieldName = isDescending ? field.slice(1) : field;
 
     if (allowedFields.includes(fieldName)) {
-      sort[fieldName] = isDescending ? -1 : 1;
+      // If order param is provided, use it; otherwise use prefix
+      if (orderParam) {
+        sort[fieldName] = orderParam === 'desc' ? -1 : 1;
+      } else {
+        sort[fieldName] = isDescending ? -1 : 1;
+      }
     }
   }
 

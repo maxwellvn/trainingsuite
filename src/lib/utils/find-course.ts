@@ -1,5 +1,7 @@
 import mongoose from 'mongoose';
 import Course from '@/models/Course';
+import Module from '@/models/Module';
+import Lesson from '@/models/Lesson';
 
 /**
  * Find a course by either MongoDB ObjectId or slug
@@ -25,4 +27,28 @@ export function findCourseByIdOrSlug(idOrSlug: string) {
  */
 export async function getCourseById(idOrSlug: string) {
   return findCourseByIdOrSlug(idOrSlug);
+}
+
+/**
+ * Recalculate and update course duration from all lesson videoDurations
+ * @param courseId - The course ObjectId
+ * @returns The updated duration in seconds
+ */
+export async function recalculateCourseDuration(courseId: mongoose.Types.ObjectId | string): Promise<number> {
+  // Get all modules for this course
+  const modules = await Module.find({ course: courseId });
+  const moduleIds = modules.map(m => m._id);
+
+  // Sum all lesson videoDurations (in seconds)
+  const result = await Lesson.aggregate([
+    { $match: { module: { $in: moduleIds } } },
+    { $group: { _id: null, totalDuration: { $sum: '$videoDuration' } } }
+  ]);
+
+  const totalDuration = result[0]?.totalDuration || 0;
+
+  // Update the course duration
+  await Course.findByIdAndUpdate(courseId, { duration: totalDuration });
+
+  return totalDuration;
 }

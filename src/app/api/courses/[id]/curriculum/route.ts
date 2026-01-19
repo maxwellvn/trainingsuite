@@ -4,8 +4,8 @@ import Module from '@/models/Module';
 import Lesson from '@/models/Lesson';
 import { optionalAuth, AuthenticatedRequest } from '@/middleware/auth';
 import { successResponse, errorResponse, handleApiError } from '@/lib/utils/api-response';
-import { UserRole } from '@/types';
-import { findCourseByIdOrSlug } from '@/lib/utils/find-course';
+import { UserRole, CourseStatus } from '@/types';
+import { findCourseByIdOrSlug, recalculateCourseDuration } from '@/lib/utils/find-course';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -29,8 +29,9 @@ async function getHandler(request: AuthenticatedRequest, { params }: RouteParams
     const isOwner = request.user?.id === course.instructor.toString();
     const isAdmin = request.user?.role === UserRole.ADMIN;
     const isInstructor = request.user?.role === UserRole.INSTRUCTOR;
+    const isPublished = course.isPublished || course.status === CourseStatus.PUBLISHED;
 
-    if (!course.isPublished && !isOwner && !isAdmin) {
+    if (!isPublished && !isOwner && !isAdmin) {
       return errorResponse('Course not found', 404);
     }
 
@@ -76,11 +77,24 @@ async function getHandler(request: AuthenticatedRequest, { params }: RouteParams
       })
     );
 
+    // Calculate total duration from lessons
+    const calculatedDuration = curriculum.reduce(
+      (acc, module) =>
+        acc + module.lessons.reduce((lessonAcc, lesson) => lessonAcc + (lesson.videoDuration || 0), 0),
+      0
+    );
+
+    // Auto-recalculate if stored duration doesn't match calculated duration
+    let courseDuration = course.duration;
+    if (calculatedDuration !== course.duration) {
+      courseDuration = await recalculateCourseDuration(course._id);
+    }
+
     return successResponse({
       course: {
         _id: course._id,
         title: course.title,
-        duration: course.duration,
+        duration: courseDuration,
       },
       curriculum,
     });

@@ -5,7 +5,7 @@ import { withInstructor, AuthenticatedRequest, optionalAuth } from '@/middleware
 import { validateBody } from '@/middleware/validate';
 import { createModuleSchema } from '@/lib/validations/course';
 import { successResponse, errorResponse, handleApiError } from '@/lib/utils/api-response';
-import { UserRole } from '@/types';
+import { UserRole, CourseStatus } from '@/types';
 import { findCourseByIdOrSlug } from '@/lib/utils/find-course';
 
 interface RouteParams {
@@ -27,8 +27,9 @@ async function getHandler(request: AuthenticatedRequest, { params }: RouteParams
     const courseId = course._id;
     const isOwner = request.user?.id === course.instructor.toString();
     const isAdmin = request.user?.role === UserRole.ADMIN;
+    const isPublished = course.isPublished || course.status === CourseStatus.PUBLISHED;
 
-    if (!course.isPublished && !isOwner && !isAdmin) {
+    if (!isPublished && !isOwner && !isAdmin) {
       return errorResponse('Course not found', 404);
     }
 

@@ -10,7 +10,8 @@ import { withInstructor, AuthenticatedRequest, optionalAuth } from '@/middleware
 import { validateBody } from '@/middleware/validate';
 import { createLessonSchema } from '@/lib/validations/course';
 import { successResponse, errorResponse, handleApiError } from '@/lib/utils/api-response';
-import { UserRole, EnrollmentStatus, NotificationType } from '@/types';
+import { recalculateCourseDuration } from '@/lib/utils/find-course';
+import { UserRole, EnrollmentStatus, NotificationType, CourseStatus } from '@/types';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -36,8 +37,9 @@ async function getHandler(request: AuthenticatedRequest, { params }: RouteParams
 
     const isOwner = request.user?.id === course.instructor.toString();
     const isAdmin = request.user?.role === UserRole.ADMIN;
+    const isPublished = course.isPublished || course.status === CourseStatus.PUBLISHED;
 
-    if (!course.isPublished && !isOwner && !isAdmin) {
+    if (!isPublished && !isOwner && !isAdmin) {
       return errorResponse('Module not found', 404);
     }
 
@@ -97,11 +99,9 @@ async function postHandler(request: AuthenticatedRequest, { params }: RouteParam
       order,
     });
 
-    // Update course duration if lesson has video duration
+    // Recalculate course duration if lesson has video duration
     if (validation.data.videoDuration) {
-      await Course.findByIdAndUpdate(course._id, {
-        $inc: { duration: validation.data.videoDuration },
-      });
+      await recalculateCourseDuration(course._id);
     }
 
     // Notify enrolled users about new content (only for published lessons)

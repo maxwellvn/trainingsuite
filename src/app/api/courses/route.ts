@@ -29,8 +29,11 @@ async function getHandler(request: AuthenticatedRequest) {
     // Only show published courses to non-admin/instructor
     const isPrivileged = request.user?.role === 'admin' || request.user?.role === 'instructor';
     if (!isPrivileged) {
-      query.isPublished = true;
-      query.status = CourseStatus.PUBLISHED;
+      // Show courses that are published (isPublished=true OR status='published')
+      query.$or = [
+        { isPublished: true },
+        { status: CourseStatus.PUBLISHED }
+      ];
     }
 
     // Filters

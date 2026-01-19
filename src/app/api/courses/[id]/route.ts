@@ -31,8 +31,9 @@ async function getHandler(request: AuthenticatedRequest, { params }: RouteParams
     // Check access for unpublished courses
     const isOwner = request.user?.id === course.instructor._id.toString();
     const isAdmin = request.user?.role === UserRole.ADMIN;
+    const isPublished = course.isPublished || course.status === CourseStatus.PUBLISHED;
 
-    if (!course.isPublished && !isOwner && !isAdmin) {
+    if (!isPublished && !isOwner && !isAdmin) {
       return errorResponse('Course not found', 404);
     }
 

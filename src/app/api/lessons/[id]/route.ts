@@ -9,6 +9,7 @@ import { withInstructor, AuthenticatedRequest, optionalAuth } from '@/middleware
 import { validateBody } from '@/middleware/validate';
 import { updateLessonSchema } from '@/lib/validations/course';
 import { successResponse, errorResponse, handleApiError } from '@/lib/utils/api-response';
+import { recalculateCourseDuration } from '@/lib/utils/find-course';
 import { UserRole, EnrollmentStatus, NotificationType } from '@/types';
 
 interface RouteParams {
@@ -107,22 +108,20 @@ async function putHandler(request: AuthenticatedRequest, { params }: RouteParams
       return errorResponse('Not authorized to update this lesson', 403);
     }
 
-    // Update course duration if video duration changed
-    if (validation.data.videoDuration !== undefined && validation.data.videoDuration !== lesson.videoDuration) {
-      const durationDiff = validation.data.videoDuration - (lesson.videoDuration || 0);
-      await Course.findByIdAndUpdate(course._id, {
-        $inc: { duration: durationDiff },
-      });
-    }
-
     // Check if lesson is being published (was unpublished, now published)
     const isBeingPublished = !lesson.isPublished && validation.data.isPublished === true;
+    const videoDurationChanged = validation.data.videoDuration !== undefined && validation.data.videoDuration !== lesson.videoDuration;
 
     const updatedLesson = await Lesson.findByIdAndUpdate(
       id,
       { $set: validation.data },
       { new: true, runValidators: true }
     );
+
+    // Recalculate course duration if video duration changed
+    if (videoDurationChanged) {
+      await recalculateCourseDuration(course._id);
+    }
 
     // Notify enrolled users if lesson is being published (new content available)
     if (isBeingPublished) {
@@ -193,14 +192,10 @@ async function deleteHandler(request: AuthenticatedRequest, { params }: RoutePar
       return errorResponse('Not authorized to delete this lesson', 403);
     }
 
-    // Update course duration
-    if (lesson.videoDuration) {
-      await Course.findByIdAndUpdate(course._id, {
-        $inc: { duration: -lesson.videoDuration },
-      });
-    }
-
     await Lesson.findByIdAndDelete(id);
+
+    // Recalculate course duration after deleting lesson
+    await recalculateCourseDuration(course._id);
 
     return successResponse(null, 'Lesson deleted successfully');
   } catch (error) {
