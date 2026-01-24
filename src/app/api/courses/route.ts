@@ -45,6 +45,9 @@ async function getHandler(request: AuthenticatedRequest) {
     const level = searchParams.get('level');
     if (level) query.level = level;
 
+    const language = searchParams.get('language');
+    if (language) query.language = language.toLowerCase();
+
     const isFree = searchParams.get('isFree');
     if (isFree !== null) query.isFree = isFree === 'true';
 
@@ -59,7 +62,7 @@ async function getHandler(request: AuthenticatedRequest) {
 
     // Generate cache key based on query params (only for public, non-privileged requests)
     const sortParam = searchParams.get('sort') || '-createdAt';
-    const filterString = `${category || ''}-${level || ''}-${isFree || ''}-${search || ''}-${sortParam}`;
+    const filterString = `${category || ''}-${level || ''}-${language || ''}-${isFree || ''}-${search || ''}-${sortParam}`;
     const cacheKey = !isPrivileged 
       ? CACHE_KEYS.coursesList(page, limit, filterString)
       : null;

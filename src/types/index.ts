@@ -91,6 +91,7 @@ export interface ICourse {
   isFree: boolean;
   status: CourseStatus;
   level: 'beginner' | 'intermediate' | 'advanced';
+  language: string; // e.g., 'en', 'es', 'fr', 'de', etc.
   duration: number; // in minutes
   enrollmentCount: number;
   rating: number;

@@ -56,6 +56,12 @@ const courseSchema = new Schema<ICourse>(
       enum: ['beginner', 'intermediate', 'advanced'],
       default: 'beginner',
     },
+    language: {
+      type: String,
+      default: 'en',
+      trim: true,
+      lowercase: true,
+    },
     duration: {
       type: Number,
       default: 0,
@@ -104,6 +110,7 @@ courseSchema.index({ category: 1 });
 courseSchema.index({ status: 1 });
 courseSchema.index({ isPublished: 1 });
 courseSchema.index({ isFree: 1 });
+courseSchema.index({ language: 1 });
 courseSchema.index({ title: 'text', description: 'text', tags: 'text' });
 
 const Course = mongoose.models.Course || mongoose.model<ICourse>('Course', courseSchema);
