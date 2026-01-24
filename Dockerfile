@@ -6,8 +6,8 @@ WORKDIR /app
 # Copy package files
 COPY package.json package-lock.json* ./
 
-# Install dependencies
-RUN npm ci
+# Install all dependencies (including devDependencies needed for build)
+RUN npm ci --include=dev
 
 # Stage 2: Builder
 FROM node:20-alpine AS builder
