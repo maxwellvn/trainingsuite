@@ -9,12 +9,11 @@ import { successResponse, handleApiError, paginatedResponse } from '@/lib/utils/
 import { getPaginationParams, getSortParams } from '@/lib/utils/pagination';
 import { createSlug } from '@/lib/utils/slugify';
 import { CourseStatus } from '@/types';
+import { cache, CACHE_KEYS, CACHE_TTL } from '@/lib/redis';
 
 // GET - List courses with filters
 async function getHandler(request: AuthenticatedRequest) {
   try {
-    await connectDB();
-
     const { searchParams } = new URL(request.url);
     const { page, limit, skip } = getPaginationParams(searchParams);
     const sort = getSortParams(
@@ -58,15 +57,38 @@ async function getHandler(request: AuthenticatedRequest) {
       query.$text = { $search: search };
     }
 
+    // Generate cache key based on query params (only for public, non-privileged requests)
+    const sortParam = searchParams.get('sort') || '-createdAt';
+    const filterString = `${category || ''}-${level || ''}-${isFree || ''}-${search || ''}-${sortParam}`;
+    const cacheKey = !isPrivileged 
+      ? CACHE_KEYS.coursesList(page, limit, filterString)
+      : null;
+
+    // Try cache first (only for non-privileged users)
+    if (cacheKey) {
+      const cached = await cache.get<{ courses: unknown[]; total: number }>(cacheKey);
+      if (cached) {
+        return paginatedResponse(cached.courses, { page, limit, total: cached.total });
+      }
+    }
+
+    await connectDB();
+
     const [courses, total] = await Promise.all([
       Course.find(query)
         .populate('instructor', 'name avatar')
         .populate('category', 'name slug')
         .sort(sort)
         .skip(skip)
-        .limit(limit),
+        .limit(limit)
+        .lean(), // Use lean() for better performance
       Course.countDocuments(query),
     ]);
+
+    // Cache the result (only for non-privileged users)
+    if (cacheKey) {
+      await cache.set(cacheKey, { courses, total }, CACHE_TTL.MEDIUM);
+    }
 
     return paginatedResponse(courses, { page, limit, total });
   } catch (error) {
@@ -96,6 +118,9 @@ async function postHandler(request: AuthenticatedRequest) {
     const populatedCourse = await Course.findById(course._id)
       .populate('instructor', 'name avatar')
       .populate('category', 'name slug');
+
+    // Invalidate courses list cache
+    await cache.del(CACHE_KEYS.patterns.allCourses);
 
     return successResponse(populatedCourse, 'Course created successfully', 201);
   } catch (error) {

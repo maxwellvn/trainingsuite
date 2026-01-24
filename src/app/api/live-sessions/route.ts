@@ -7,12 +7,11 @@ import { createLiveSessionSchema } from '@/lib/validations/live-session';
 import { successResponse, handleApiError, paginatedResponse } from '@/lib/utils/api-response';
 import { getPaginationParams, getSortParams } from '@/lib/utils/pagination';
 import { LiveSessionStatus } from '@/types';
+import { cache, CACHE_KEYS, CACHE_TTL } from '@/lib/redis';
 
 // GET - List live sessions
 async function getHandler(request: AuthenticatedRequest) {
   try {
-    await connectDB();
-
     const { searchParams } = new URL(request.url);
     const { page, limit, skip } = getPaginationParams(searchParams);
     const sort = getSortParams(searchParams, ['scheduledAt', 'createdAt'], 'scheduledAt');
@@ -35,15 +34,36 @@ async function getHandler(request: AuthenticatedRequest) {
       query.scheduledAt = { $gte: new Date() };
     }
 
+    // Cache key for public requests (no specific filters)
+    const cacheKey = !courseId && !status && !upcoming 
+      ? CACHE_KEYS.liveSessionsList(page, limit) 
+      : null;
+
+    // Try cache first
+    if (cacheKey) {
+      const cached = await cache.get<{ sessions: unknown[]; total: number }>(cacheKey);
+      if (cached) {
+        return paginatedResponse(cached.sessions, { page, limit, total: cached.total });
+      }
+    }
+
+    await connectDB();
+
     const [sessions, total] = await Promise.all([
       LiveSession.find(query)
         .populate('instructor', 'name avatar')
         .populate('course', 'title slug')
         .sort(sort)
         .skip(skip)
-        .limit(limit),
+        .limit(limit)
+        .lean(),
       LiveSession.countDocuments(query),
     ]);
+
+    // Cache for shorter time since live sessions change frequently
+    if (cacheKey) {
+      await cache.set(cacheKey, { sessions, total }, CACHE_TTL.SHORT);
+    }
 
     return paginatedResponse(sessions, { page, limit, total });
   } catch (error) {
@@ -71,6 +91,9 @@ async function postHandler(request: AuthenticatedRequest) {
     const populatedSession = await LiveSession.findById(session._id)
       .populate('instructor', 'name avatar')
       .populate('course', 'title slug');
+
+    // Invalidate live sessions cache
+    await cache.del(CACHE_KEYS.patterns.allLiveSessions);
 
     return successResponse(populatedSession, 'Live session created successfully', 201);
   } catch (error) {

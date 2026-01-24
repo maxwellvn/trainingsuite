@@ -9,6 +9,7 @@ import { successResponse, errorResponse, handleApiError } from '@/lib/utils/api-
 import { createSlug } from '@/lib/utils/slugify';
 import { CourseStatus, UserRole } from '@/types';
 import { findCourseByIdOrSlug } from '@/lib/utils/find-course';
+import { cache, CACHE_KEYS, CACHE_TTL } from '@/lib/redis';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -18,23 +19,41 @@ interface RouteParams {
 async function getHandler(request: AuthenticatedRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
+    
+    // For public requests, try cache first
+    const isPrivileged = request.user?.role === 'admin' || request.user?.role === 'instructor';
+    const cacheKey = !isPrivileged ? CACHE_KEYS.courseBySlug(id) : null;
+    
+    if (cacheKey) {
+      const cached = await cache.get(cacheKey);
+      if (cached) {
+        return successResponse(cached);
+      }
+    }
+
     await connectDB();
 
     const course = await findCourseByIdOrSlug(id)
       .populate('instructor', 'name avatar bio')
-      .populate('category', 'name slug');
+      .populate('category', 'name slug')
+      .lean();
 
     if (!course) {
       return errorResponse('Course not found', 404);
     }
 
     // Check access for unpublished courses
-    const isOwner = request.user?.id === course.instructor._id.toString();
+    const isOwner = request.user?.id === (course.instructor as any)._id.toString();
     const isAdmin = request.user?.role === UserRole.ADMIN;
     const isPublished = course.isPublished || course.status === CourseStatus.PUBLISHED;
 
     if (!isPublished && !isOwner && !isAdmin) {
       return errorResponse('Course not found', 404);
+    }
+
+    // Cache published courses for public access
+    if (cacheKey && isPublished) {
+      await cache.set(cacheKey, course, CACHE_TTL.MEDIUM);
     }
 
     return successResponse(course);
@@ -89,6 +108,13 @@ async function putHandler(request: AuthenticatedRequest, { params }: RouteParams
       .populate('instructor', 'name avatar')
       .populate('category', 'name slug');
 
+    // Invalidate cache for this course and course lists
+    await Promise.all([
+      cache.del(CACHE_KEYS.courseBySlug(course.slug)),
+      cache.del(CACHE_KEYS.courseById(course._id.toString())),
+      cache.del(CACHE_KEYS.patterns.allCourses),
+    ]);
+
     return successResponse(updatedCourse, 'Course updated successfully');
   } catch (error) {
     return handleApiError(error);
@@ -113,6 +139,13 @@ async function deleteHandler(request: AuthenticatedRequest, { params }: RoutePar
     }
 
     await Course.findByIdAndDelete(course._id);
+
+    // Invalidate cache
+    await Promise.all([
+      cache.del(CACHE_KEYS.courseBySlug(course.slug)),
+      cache.del(CACHE_KEYS.courseById(course._id.toString())),
+      cache.del(CACHE_KEYS.patterns.allCourses),
+    ]);
 
     return successResponse(null, 'Course deleted successfully');
   } catch (error) {

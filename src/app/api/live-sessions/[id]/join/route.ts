@@ -5,6 +5,7 @@ import LiveAttendance from '@/models/LiveAttendance';
 import { withAuth, AuthenticatedRequest } from '@/middleware/auth';
 import { successResponse, errorResponse, handleApiError } from '@/lib/utils/api-response';
 import { LiveSessionStatus } from '@/types';
+import { cache, CACHE_KEYS, CACHE_TTL } from '@/lib/redis';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -68,9 +69,15 @@ async function postHandler(request: AuthenticatedRequest, { params }: RouteParam
         joinedAt: new Date(),
       });
 
-      // Increment attendee count
+      // Increment attendee count in DB
       await LiveSession.findByIdAndUpdate(id, { $inc: { attendeeCount: 1 } });
+      
+      // Also track in Redis for real-time count (expires after 2 hours)
+      await cache.incr(CACHE_KEYS.liveSessionAttendees(id), CACHE_TTL.VERY_LONG);
     }
+    
+    // Invalidate session cache so attendee count is fresh
+    await cache.del(CACHE_KEYS.liveSessionById(id));
 
     return successResponse(
       {

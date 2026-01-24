@@ -6,6 +6,7 @@ import { validateBody } from '@/middleware/validate';
 import { updateLiveSessionSchema } from '@/lib/validations/live-session';
 import { successResponse, errorResponse, handleApiError } from '@/lib/utils/api-response';
 import { UserRole, LiveSessionStatus } from '@/types';
+import { cache, CACHE_KEYS, CACHE_TTL } from '@/lib/redis';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -84,6 +85,12 @@ async function putHandler(request: AuthenticatedRequest, { params }: RouteParams
       .populate('instructor', 'name avatar')
       .populate('course', 'title slug');
 
+    // Invalidate cache
+    await Promise.all([
+      cache.del(CACHE_KEYS.liveSessionById(id)),
+      cache.del(CACHE_KEYS.patterns.allLiveSessions),
+    ]);
+
     return successResponse(updatedSession, 'Live session updated successfully');
   } catch (error) {
     return handleApiError(error);
@@ -111,6 +118,12 @@ async function deleteHandler(request: AuthenticatedRequest, { params }: RoutePar
     }
 
     await LiveSession.findByIdAndDelete(id);
+
+    // Invalidate cache
+    await Promise.all([
+      cache.del(CACHE_KEYS.liveSessionById(id)),
+      cache.del(CACHE_KEYS.patterns.allLiveSessions),
+    ]);
 
     return successResponse(null, 'Live session deleted successfully');
   } catch (error) {

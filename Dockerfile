@@ -12,7 +12,7 @@ RUN npm ci --include=dev
 # Stage 1b: Runtime dependencies (separate for caching)
 FROM node:20-alpine AS runtime-deps
 WORKDIR /app
-RUN npm install --no-save mongoose bcryptjs dotenv pdfkit uuid
+RUN npm install --no-save mongoose bcryptjs dotenv pdfkit uuid ioredis
 
 # Stage 2: Builder
 FROM node:20-alpine AS builder
