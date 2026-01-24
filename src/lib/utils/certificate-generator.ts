@@ -477,8 +477,6 @@ export async function generateCertificatePDFBuffer(
       const pageWidth = doc.page.width;
       const pageHeight = doc.page.height;
       const centerX = pageWidth / 2;
-      const margin = 50;
-      const contentWidth = pageWidth - (margin * 2);
 
       // Color palette
       const colors = {
@@ -532,13 +530,13 @@ export async function generateCertificatePDFBuffer(
 
       let currentY = 60;
 
-      // Organization name
+      // Organization name - centered using 0 as x and full pageWidth
       doc
         .fontSize(10)
         .fillColor(colors.textLight)
-        .text(organizationName.toUpperCase(), margin, currentY, {
+        .text(organizationName.toUpperCase(), 0, currentY, {
           align: 'center',
-          width: contentWidth,
+          width: pageWidth,
           characterSpacing: 3,
         });
 
@@ -548,9 +546,9 @@ export async function generateCertificatePDFBuffer(
       doc
         .fontSize(42)
         .fillColor(colors.primary)
-        .text('CERTIFICATE', margin, currentY, {
+        .text('CERTIFICATE', 0, currentY, {
           align: 'center',
-          width: contentWidth,
+          width: pageWidth,
           characterSpacing: 5,
         });
 
@@ -560,15 +558,15 @@ export async function generateCertificatePDFBuffer(
       doc
         .fontSize(16)
         .fillColor(colors.textLight)
-        .text('OF COMPLETION', margin, currentY, {
+        .text('OF COMPLETION', 0, currentY, {
           align: 'center',
-          width: contentWidth,
+          width: pageWidth,
           characterSpacing: 3,
         });
 
       currentY += 30;
 
-      // Divider
+      // Divider - centered
       const dividerWidth = 280;
       const dividerX = centerX - (dividerWidth / 2);
       doc
@@ -582,9 +580,9 @@ export async function generateCertificatePDFBuffer(
       doc
         .fontSize(11)
         .fillColor(colors.textLight)
-        .text('This is to certify that', margin, currentY, {
+        .text('This is to certify that', 0, currentY, {
           align: 'center',
-          width: contentWidth,
+          width: pageWidth,
         });
 
       currentY += 20;
@@ -593,14 +591,14 @@ export async function generateCertificatePDFBuffer(
       doc
         .fontSize(32)
         .fillColor(colors.primary)
-        .text(userName, margin, currentY, {
+        .text(userName, 0, currentY, {
           align: 'center',
-          width: contentWidth,
+          width: pageWidth,
         });
 
       currentY += 42;
 
-      // Line under name
+      // Line under name - centered
       const nameLineWidth = 320;
       const nameLineX = centerX - (nameLineWidth / 2);
       doc
@@ -614,9 +612,9 @@ export async function generateCertificatePDFBuffer(
       doc
         .fontSize(11)
         .fillColor(colors.textLight)
-        .text('has successfully completed the course', margin, currentY, {
+        .text('has successfully completed the course', 0, currentY, {
           align: 'center',
-          width: contentWidth,
+          width: pageWidth,
         });
 
       currentY += 20;
@@ -625,9 +623,9 @@ export async function generateCertificatePDFBuffer(
       doc
         .fontSize(20)
         .fillColor(colors.text)
-        .text(courseName, margin, currentY, {
+        .text(courseName, 0, currentY, {
           align: 'center',
-          width: contentWidth,
+          width: pageWidth,
         });
 
       currentY += 30;
@@ -642,28 +640,26 @@ export async function generateCertificatePDFBuffer(
       doc
         .fontSize(10)
         .fillColor(colors.textLight)
-        .text(formattedDate, margin, currentY, {
+        .text(formattedDate, 0, currentY, {
           align: 'center',
-          width: contentWidth,
+          width: pageWidth,
         });
 
-      // Signature section
+      // Signature section - centered Program Director only
       const signatureY = pageHeight - 100;
-      const signatureWidth = 160;
-      const signatureSpacing = 180;
-
-      const leftSigX = centerX - signatureSpacing - (signatureWidth / 2);
+      const signatureWidth = 200;
+      const sigX = centerX - (signatureWidth / 2);
 
       doc
-        .moveTo(leftSigX, signatureY)
-        .lineTo(leftSigX + signatureWidth, signatureY)
+        .moveTo(sigX, signatureY)
+        .lineTo(sigX + signatureWidth, signatureY)
         .lineWidth(0.75)
         .stroke(colors.text);
 
       doc
         .fontSize(10)
         .fillColor(colors.text)
-        .text(instructorName, leftSigX, signatureY + 6, {
+        .text('Program Director', sigX, signatureY + 6, {
           width: signatureWidth,
           align: 'center',
         });
@@ -671,31 +667,7 @@ export async function generateCertificatePDFBuffer(
       doc
         .fontSize(8)
         .fillColor(colors.textLight)
-        .text('Course Instructor', leftSigX, signatureY + 20, {
-          width: signatureWidth,
-          align: 'center',
-        });
-
-      const rightSigX = centerX + signatureSpacing - (signatureWidth / 2);
-
-      doc
-        .moveTo(rightSigX, signatureY)
-        .lineTo(rightSigX + signatureWidth, signatureY)
-        .lineWidth(0.75)
-        .stroke(colors.text);
-
-      doc
-        .fontSize(10)
-        .fillColor(colors.text)
-        .text('Program Director', rightSigX, signatureY + 6, {
-          width: signatureWidth,
-          align: 'center',
-        });
-
-      doc
-        .fontSize(8)
-        .fillColor(colors.textLight)
-        .text(organizationName, rightSigX, signatureY + 20, {
+        .text(organizationName, sigX, signatureY + 20, {
           width: signatureWidth,
           align: 'center',
         });
@@ -704,9 +676,9 @@ export async function generateCertificatePDFBuffer(
       doc
         .fontSize(7)
         .fillColor(colors.textLight)
-        .text(`Certificate ID: ${certificateNumber}`, margin, pageHeight - 45, {
+        .text(`Certificate ID: ${certificateNumber}`, 0, pageHeight - 45, {
           align: 'center',
-          width: contentWidth,
+          width: pageWidth,
           characterSpacing: 1,
         });
 
