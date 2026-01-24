@@ -9,6 +9,11 @@ COPY package.json package-lock.json* ./
 # Install all dependencies (including devDependencies needed for build)
 RUN npm ci --include=dev
 
+# Stage 1b: Runtime dependencies (separate for caching)
+FROM node:20-alpine AS runtime-deps
+WORKDIR /app
+RUN npm install --no-save mongoose bcryptjs dotenv pdfkit uuid
+
 # Stage 2: Builder
 FROM node:20-alpine AS builder
 WORKDIR /app
@@ -41,14 +46,16 @@ RUN apk add --no-cache fontconfig ttf-dejavu
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
+# Copy pre-installed runtime dependencies from runtime-deps stage (cached)
+COPY --from=runtime-deps /app/node_modules ./node_modules
+
 # Copy necessary files from builder
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
-# Copy seed script and install its dependencies
+# Copy seed script
 COPY --from=builder /app/dist/seed.js ./seed.js
-RUN npm install --no-save mongoose bcryptjs dotenv pdfkit uuid
 
 # Create uploads directory with proper permissions
 RUN mkdir -p ./public/uploads/materials ./public/uploads/thumbnails ./public/uploads/avatars ./public/uploads/certificates
