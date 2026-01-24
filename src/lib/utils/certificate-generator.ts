@@ -414,6 +414,315 @@ export async function generateCertificatePDF(
   });
 }
 
+// Generate certificate PDF and return buffer directly (no file save)
+export async function generateCertificatePDFBuffer(
+  data: CertificateData
+): Promise<{ success: true; buffer: Buffer; certificateNumber: string } | CertificateError> {
+  return new Promise((resolve) => {
+    try {
+      console.log('[generateCertificatePDFBuffer] Starting with data:', JSON.stringify(data, null, 2));
+      
+      const {
+        userName,
+        courseName,
+        completionDate,
+        certificateNumber,
+        instructorName = 'Course Instructor',
+        organizationName = 'Rhapsody International Missions',
+      } = data;
+
+      // Initialize PDFKit before creating document
+      console.log('[generateCertificatePDFBuffer] Initializing PDFKit...');
+      initializePdfKit();
+      console.log('[generateCertificatePDFBuffer] PDFKit initialized');
+
+      // Create PDF document (landscape orientation)
+      const doc = new PDFDocument({
+        size: 'A4',
+        layout: 'landscape',
+        margins: { top: 50, bottom: 50, left: 50, right: 50 },
+      });
+
+      // Collect PDF data in buffer
+      const chunks: Buffer[] = [];
+      doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+      doc.on('error', (error: Error) => {
+        console.error('[generateCertificatePDFBuffer] PDF stream error:', error);
+        resolve({
+          success: false,
+          error: `PDF generation stream error: ${error.message}`,
+        });
+      });
+      doc.on('end', () => {
+        try {
+          console.log('[generateCertificatePDFBuffer] PDF stream ended, concatenating chunks...');
+          const pdfBuffer = Buffer.concat(chunks);
+          console.log('[generateCertificatePDFBuffer] PDF buffer size:', pdfBuffer.length);
+          
+          resolve({
+            success: true,
+            buffer: pdfBuffer,
+            certificateNumber,
+          });
+        } catch (endError) {
+          console.error('[generateCertificatePDFBuffer] Error in end handler:', endError);
+          resolve({
+            success: false,
+            error: `Failed to process PDF: ${endError instanceof Error ? endError.message : String(endError)}`,
+          });
+        }
+      });
+
+      // Page dimensions and layout constants
+      const pageWidth = doc.page.width;
+      const pageHeight = doc.page.height;
+      const centerX = pageWidth / 2;
+      const margin = 50;
+      const contentWidth = pageWidth - (margin * 2);
+
+      // Color palette
+      const colors = {
+        primary: '#1a365d',
+        secondary: '#c9a227',
+        text: '#2d3748',
+        textLight: '#718096',
+        border: '#e2e8f0',
+        accent: '#c9a227',
+      };
+
+      // Draw elegant outer border
+      doc
+        .rect(25, 25, pageWidth - 50, pageHeight - 50)
+        .lineWidth(2)
+        .stroke(colors.secondary);
+
+      // Draw inner border
+      doc
+        .rect(35, 35, pageWidth - 70, pageHeight - 70)
+        .lineWidth(0.5)
+        .stroke(colors.primary);
+
+      // Corner decorations
+      const cornerSize = 20;
+      const cornerOffset = 45;
+
+      doc.moveTo(cornerOffset, cornerOffset + cornerSize)
+         .lineTo(cornerOffset, cornerOffset)
+         .lineTo(cornerOffset + cornerSize, cornerOffset)
+         .lineWidth(2)
+         .stroke(colors.secondary);
+
+      doc.moveTo(pageWidth - cornerOffset - cornerSize, cornerOffset)
+         .lineTo(pageWidth - cornerOffset, cornerOffset)
+         .lineTo(pageWidth - cornerOffset, cornerOffset + cornerSize)
+         .lineWidth(2)
+         .stroke(colors.secondary);
+
+      doc.moveTo(cornerOffset, pageHeight - cornerOffset - cornerSize)
+         .lineTo(cornerOffset, pageHeight - cornerOffset)
+         .lineTo(cornerOffset + cornerSize, pageHeight - cornerOffset)
+         .lineWidth(2)
+         .stroke(colors.secondary);
+
+      doc.moveTo(pageWidth - cornerOffset - cornerSize, pageHeight - cornerOffset)
+         .lineTo(pageWidth - cornerOffset, pageHeight - cornerOffset)
+         .lineTo(pageWidth - cornerOffset, pageHeight - cornerOffset - cornerSize)
+         .lineWidth(2)
+         .stroke(colors.secondary);
+
+      let currentY = 60;
+
+      // Organization name
+      doc
+        .fontSize(10)
+        .fillColor(colors.textLight)
+        .text(organizationName.toUpperCase(), margin, currentY, {
+          align: 'center',
+          width: contentWidth,
+          characterSpacing: 3,
+        });
+
+      currentY += 28;
+
+      // Main title
+      doc
+        .fontSize(42)
+        .fillColor(colors.primary)
+        .text('CERTIFICATE', margin, currentY, {
+          align: 'center',
+          width: contentWidth,
+          characterSpacing: 5,
+        });
+
+      currentY += 48;
+
+      // Subtitle
+      doc
+        .fontSize(16)
+        .fillColor(colors.textLight)
+        .text('OF COMPLETION', margin, currentY, {
+          align: 'center',
+          width: contentWidth,
+          characterSpacing: 3,
+        });
+
+      currentY += 30;
+
+      // Divider
+      const dividerWidth = 280;
+      const dividerX = centerX - (dividerWidth / 2);
+      doc
+        .moveTo(dividerX, currentY)
+        .lineTo(dividerX + dividerWidth, currentY)
+        .lineWidth(1)
+        .stroke(colors.secondary);
+
+      currentY += 22;
+
+      doc
+        .fontSize(11)
+        .fillColor(colors.textLight)
+        .text('This is to certify that', margin, currentY, {
+          align: 'center',
+          width: contentWidth,
+        });
+
+      currentY += 20;
+
+      // Recipient name
+      doc
+        .fontSize(32)
+        .fillColor(colors.primary)
+        .text(userName, margin, currentY, {
+          align: 'center',
+          width: contentWidth,
+        });
+
+      currentY += 42;
+
+      // Line under name
+      const nameLineWidth = 320;
+      const nameLineX = centerX - (nameLineWidth / 2);
+      doc
+        .moveTo(nameLineX, currentY)
+        .lineTo(nameLineX + nameLineWidth, currentY)
+        .lineWidth(0.75)
+        .stroke(colors.secondary);
+
+      currentY += 20;
+
+      doc
+        .fontSize(11)
+        .fillColor(colors.textLight)
+        .text('has successfully completed the course', margin, currentY, {
+          align: 'center',
+          width: contentWidth,
+        });
+
+      currentY += 20;
+
+      // Course name
+      doc
+        .fontSize(20)
+        .fillColor(colors.text)
+        .text(courseName, margin, currentY, {
+          align: 'center',
+          width: contentWidth,
+        });
+
+      currentY += 30;
+
+      // Completion date
+      const formattedDate = completionDate.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+
+      doc
+        .fontSize(10)
+        .fillColor(colors.textLight)
+        .text(formattedDate, margin, currentY, {
+          align: 'center',
+          width: contentWidth,
+        });
+
+      // Signature section
+      const signatureY = pageHeight - 100;
+      const signatureWidth = 160;
+      const signatureSpacing = 180;
+
+      const leftSigX = centerX - signatureSpacing - (signatureWidth / 2);
+
+      doc
+        .moveTo(leftSigX, signatureY)
+        .lineTo(leftSigX + signatureWidth, signatureY)
+        .lineWidth(0.75)
+        .stroke(colors.text);
+
+      doc
+        .fontSize(10)
+        .fillColor(colors.text)
+        .text(instructorName, leftSigX, signatureY + 6, {
+          width: signatureWidth,
+          align: 'center',
+        });
+
+      doc
+        .fontSize(8)
+        .fillColor(colors.textLight)
+        .text('Course Instructor', leftSigX, signatureY + 20, {
+          width: signatureWidth,
+          align: 'center',
+        });
+
+      const rightSigX = centerX + signatureSpacing - (signatureWidth / 2);
+
+      doc
+        .moveTo(rightSigX, signatureY)
+        .lineTo(rightSigX + signatureWidth, signatureY)
+        .lineWidth(0.75)
+        .stroke(colors.text);
+
+      doc
+        .fontSize(10)
+        .fillColor(colors.text)
+        .text('Program Director', rightSigX, signatureY + 6, {
+          width: signatureWidth,
+          align: 'center',
+        });
+
+      doc
+        .fontSize(8)
+        .fillColor(colors.textLight)
+        .text(organizationName, rightSigX, signatureY + 20, {
+          width: signatureWidth,
+          align: 'center',
+        });
+
+      // Certificate number
+      doc
+        .fontSize(7)
+        .fillColor(colors.textLight)
+        .text(`Certificate ID: ${certificateNumber}`, margin, pageHeight - 45, {
+          align: 'center',
+          width: contentWidth,
+          characterSpacing: 1,
+        });
+
+      // Finalize PDF
+      doc.end();
+    } catch (error) {
+      console.error('[generateCertificatePDFBuffer] Certificate generation error:', error);
+      console.error('[generateCertificatePDFBuffer] Error stack:', (error as Error).stack);
+      resolve({
+        success: false,
+        error: `Failed to generate certificate: ${error instanceof Error ? error.message : String(error)}`,
+      });
+    }
+  });
+}
+
 export async function createCertificate(
   userId: string,
   courseId: string,
