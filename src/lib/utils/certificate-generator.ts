@@ -191,12 +191,12 @@ export async function generateCertificatePDF(
          .lineWidth(2)
          .stroke(colors.secondary);
 
-      // Vertical spacing tracker
-      let currentY = 70;
+      // Vertical spacing tracker - tighter spacing to fit on one page
+      let currentY = 60;
 
       // Organization name at top
       doc
-        .fontSize(11)
+        .fontSize(10)
         .fillColor(colors.textLight)
         .text(organizationName.toUpperCase(), margin, currentY, {
           align: 'center',
@@ -204,34 +204,34 @@ export async function generateCertificatePDF(
           characterSpacing: 3,
         });
 
-      currentY += 35;
+      currentY += 28;
 
       // Main title: CERTIFICATE
       doc
-        .fontSize(48)
+        .fontSize(42)
         .fillColor(colors.primary)
         .text('CERTIFICATE', margin, currentY, {
           align: 'center',
           width: contentWidth,
-          characterSpacing: 6,
+          characterSpacing: 5,
         });
 
-      currentY += 55;
+      currentY += 48;
 
       // Subtitle: OF COMPLETION
       doc
-        .fontSize(18)
+        .fontSize(16)
         .fillColor(colors.textLight)
         .text('OF COMPLETION', margin, currentY, {
           align: 'center',
           width: contentWidth,
-          characterSpacing: 4,
+          characterSpacing: 3,
         });
 
-      currentY += 40;
+      currentY += 30;
 
       // Decorative divider line
-      const dividerWidth = 300;
+      const dividerWidth = 280;
       const dividerX = centerX - (dividerWidth / 2);
       doc
         .moveTo(dividerX, currentY)
@@ -239,32 +239,32 @@ export async function generateCertificatePDF(
         .lineWidth(1)
         .stroke(colors.secondary);
 
-      currentY += 30;
+      currentY += 22;
 
       // "This is to certify that"
       doc
-        .fontSize(12)
+        .fontSize(11)
         .fillColor(colors.textLight)
         .text('This is to certify that', margin, currentY, {
           align: 'center',
           width: contentWidth,
         });
 
-      currentY += 25;
+      currentY += 20;
 
       // Recipient name (prominent)
       doc
-        .fontSize(36)
+        .fontSize(32)
         .fillColor(colors.primary)
         .text(userName, margin, currentY, {
           align: 'center',
           width: contentWidth,
         });
 
-      currentY += 50;
+      currentY += 42;
 
       // Line under name
-      const nameLineWidth = 350;
+      const nameLineWidth = 320;
       const nameLineX = centerX - (nameLineWidth / 2);
       doc
         .moveTo(nameLineX, currentY)
@@ -272,29 +272,29 @@ export async function generateCertificatePDF(
         .lineWidth(0.75)
         .stroke(colors.secondary);
 
-      currentY += 25;
+      currentY += 20;
 
       // "has successfully completed the course"
       doc
-        .fontSize(12)
+        .fontSize(11)
         .fillColor(colors.textLight)
         .text('has successfully completed the course', margin, currentY, {
           align: 'center',
           width: contentWidth,
         });
 
-      currentY += 25;
+      currentY += 20;
 
       // Course name
       doc
-        .fontSize(22)
+        .fontSize(20)
         .fillColor(colors.text)
         .text(courseName, margin, currentY, {
           align: 'center',
           width: contentWidth,
         });
 
-      currentY += 40;
+      currentY += 30;
 
       // Completion date
       const formattedDate = completionDate.toLocaleDateString('en-US', {
@@ -304,17 +304,17 @@ export async function generateCertificatePDF(
       });
 
       doc
-        .fontSize(11)
+        .fontSize(10)
         .fillColor(colors.textLight)
         .text(formattedDate, margin, currentY, {
           align: 'center',
           width: contentWidth,
         });
 
-      // Signature section - positioned from bottom
-      const signatureY = pageHeight - 130;
-      const signatureWidth = 180;
-      const signatureSpacing = 200; // Distance from center to each signature center
+      // Signature section - positioned from bottom with proper spacing
+      const signatureY = pageHeight - 100;
+      const signatureWidth = 160;
+      const signatureSpacing = 180; // Distance from center to each signature center
 
       // Left signature (Instructor)
       const leftSigX = centerX - signatureSpacing - (signatureWidth / 2);
@@ -326,17 +326,17 @@ export async function generateCertificatePDF(
         .stroke(colors.text);
 
       doc
-        .fontSize(11)
+        .fontSize(10)
         .fillColor(colors.text)
-        .text(instructorName, leftSigX, signatureY + 8, {
+        .text(instructorName, leftSigX, signatureY + 6, {
           width: signatureWidth,
           align: 'center',
         });
 
       doc
-        .fontSize(9)
+        .fontSize(8)
         .fillColor(colors.textLight)
-        .text('Course Instructor', leftSigX, signatureY + 24, {
+        .text('Course Instructor', leftSigX, signatureY + 20, {
           width: signatureWidth,
           align: 'center',
         });
@@ -351,26 +351,26 @@ export async function generateCertificatePDF(
         .stroke(colors.text);
 
       doc
-        .fontSize(11)
+        .fontSize(10)
         .fillColor(colors.text)
-        .text('Program Director', rightSigX, signatureY + 8, {
+        .text('Program Director', rightSigX, signatureY + 6, {
           width: signatureWidth,
           align: 'center',
         });
 
-      doc
-        .fontSize(9)
-        .fillColor(colors.textLight)
-        .text(organizationName, rightSigX, signatureY + 24, {
-          width: signatureWidth,
-          align: 'center',
-        });
-
-      // Certificate number at bottom center
       doc
         .fontSize(8)
         .fillColor(colors.textLight)
-        .text(`Certificate ID: ${certificateNumber}`, margin, pageHeight - 55, {
+        .text(organizationName, rightSigX, signatureY + 20, {
+          width: signatureWidth,
+          align: 'center',
+        });
+
+      // Certificate number at bottom center - inside the border
+      doc
+        .fontSize(7)
+        .fillColor(colors.textLight)
+        .text(`Certificate ID: ${certificateNumber}`, margin, pageHeight - 45, {
           align: 'center',
           width: contentWidth,
           characterSpacing: 1,
