@@ -60,7 +60,7 @@ export const updateProfileSchema = z.object({
     .max(500, 'Bio cannot exceed 500 characters')
     .optional(),
   phone: z.string().optional(),
-  avatar: z.string().url('Invalid avatar URL').optional(),
+  avatar: z.string().min(1, 'Avatar URL cannot be empty').optional(),
 });
 
 export type RegisterInput = z.infer<typeof registerSchema>;
