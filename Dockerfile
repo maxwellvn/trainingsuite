@@ -34,6 +34,9 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Install dependencies needed for PDFKit (fonts, etc.)
+RUN apk add --no-cache fontconfig ttf-dejavu
+
 # Create non-root user for security
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
@@ -45,7 +48,7 @@ COPY --from=builder /app/.next/static ./.next/static
 
 # Copy seed script and install its dependencies
 COPY --from=builder /app/dist/seed.js ./seed.js
-RUN npm install --no-save mongoose bcryptjs dotenv
+RUN npm install --no-save mongoose bcryptjs dotenv pdfkit uuid
 
 # Create uploads directory with proper permissions
 RUN mkdir -p ./public/uploads/materials ./public/uploads/thumbnails ./public/uploads/avatars ./public/uploads/certificates

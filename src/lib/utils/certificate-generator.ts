@@ -83,6 +83,8 @@ export async function generateCertificatePDF(
 ): Promise<GeneratedCertificate | CertificateError> {
   return new Promise((resolve) => {
     try {
+      console.log('[generateCertificatePDF] Starting with data:', JSON.stringify(data, null, 2));
+      
       const {
         userName,
         courseName,
@@ -93,7 +95,9 @@ export async function generateCertificatePDF(
       } = data;
 
       // Initialize PDFKit before creating document (fixes Next.js path issues)
+      console.log('[generateCertificatePDF] Initializing PDFKit...');
       initializePdfKit();
+      console.log('[generateCertificatePDF] PDFKit initialized');
 
       // Create PDF document (landscape orientation)
       const doc = new PDFDocument({
@@ -105,27 +109,48 @@ export async function generateCertificatePDF(
       // Collect PDF data in buffer
       const chunks: Buffer[] = [];
       doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+      doc.on('error', (error: Error) => {
+        console.error('[generateCertificatePDF] PDF stream error:', error);
+        resolve({
+          success: false,
+          error: `PDF generation stream error: ${error.message}`,
+        });
+      });
       doc.on('end', async () => {
-        const pdfBuffer = Buffer.concat(chunks);
-        const fileName = `certificate-${certificateNumber}.pdf`;
+        try {
+          console.log('[generateCertificatePDF] PDF stream ended, concatenating chunks...');
+          const pdfBuffer = Buffer.concat(chunks);
+          console.log('[generateCertificatePDF] PDF buffer size:', pdfBuffer.length);
+          
+          const fileName = `certificate-${certificateNumber}.pdf`;
+          console.log('[generateCertificatePDF] Uploading with fileName:', fileName);
 
-        const uploadResult = await uploadBuffer(
-          pdfBuffer,
-          'certificates',
-          fileName,
-          'application/pdf'
-        );
+          const uploadResult = await uploadBuffer(
+            pdfBuffer,
+            'certificates',
+            fileName,
+            'application/pdf'
+          );
 
-        if (uploadResult.success) {
-          resolve({
-            success: true,
-            certificateUrl: uploadResult.fileUrl,
-            certificateNumber,
-          });
-        } else {
+          console.log('[generateCertificatePDF] Upload result:', JSON.stringify(uploadResult, null, 2));
+
+          if (uploadResult.success) {
+            resolve({
+              success: true,
+              certificateUrl: uploadResult.fileUrl,
+              certificateNumber,
+            });
+          } else {
+            resolve({
+              success: false,
+              error: uploadResult.error,
+            });
+          }
+        } catch (endError) {
+          console.error('[generateCertificatePDF] Error in end handler:', endError);
           resolve({
             success: false,
-            error: uploadResult.error,
+            error: `Failed to process PDF: ${endError instanceof Error ? endError.message : String(endError)}`,
           });
         }
       });
@@ -379,10 +404,11 @@ export async function generateCertificatePDF(
       // Finalize PDF
       doc.end();
     } catch (error) {
-      console.error('Certificate generation error:', error);
+      console.error('[generateCertificatePDF] Certificate generation error:', error);
+      console.error('[generateCertificatePDF] Error stack:', (error as Error).stack);
       resolve({
         success: false,
-        error: 'Failed to generate certificate',
+        error: `Failed to generate certificate: ${error instanceof Error ? error.message : String(error)}`,
       });
     }
   });
