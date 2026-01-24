@@ -92,6 +92,7 @@ export interface ICourse {
   status: CourseStatus;
   level: 'beginner' | 'intermediate' | 'advanced';
   language: string; // e.g., 'en', 'es', 'fr', 'de', etc.
+  country?: string; // e.g., 'US', 'NG', 'GB', etc.
   duration: number; // in minutes
   enrollmentCount: number;
   rating: number;
