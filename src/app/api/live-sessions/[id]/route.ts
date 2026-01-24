@@ -5,7 +5,7 @@ import { withInstructor, AuthenticatedRequest, optionalAuth } from '@/middleware
 import { validateBody } from '@/middleware/validate';
 import { updateLiveSessionSchema } from '@/lib/validations/live-session';
 import { successResponse, errorResponse, handleApiError } from '@/lib/utils/api-response';
-import { UserRole } from '@/types';
+import { UserRole, LiveSessionStatus } from '@/types';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -17,12 +17,27 @@ async function getHandler(request: AuthenticatedRequest, { params }: RouteParams
     const { id } = await params;
     await connectDB();
 
-    const session = await LiveSession.findById(id)
-      .populate('instructor', 'name avatar bio')
+    let session = await LiveSession.findById(id)
+      .populate('instructor', 'name avatar bio title')
       .populate('course', 'title slug thumbnail');
 
     if (!session) {
       return errorResponse('Live session not found', 404);
+    }
+
+    // Auto-start: If session is scheduled, has a stream URL, and scheduled time has passed
+    if (
+      session.status === LiveSessionStatus.SCHEDULED &&
+      session.streamUrl &&
+      new Date(session.scheduledAt) <= new Date()
+    ) {
+      session = await LiveSession.findByIdAndUpdate(
+        id,
+        { $set: { status: LiveSessionStatus.LIVE } },
+        { new: true }
+      )
+        .populate('instructor', 'name avatar bio title')
+        .populate('course', 'title slug thumbnail');
     }
 
     return successResponse(session);

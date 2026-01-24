@@ -16,18 +16,36 @@ async function postHandler(request: AuthenticatedRequest, { params }: RouteParam
     const { id } = await params;
     await connectDB();
 
-    const session = await LiveSession.findById(id);
+    let session = await LiveSession.findById(id);
 
     if (!session) {
       return errorResponse('Live session not found', 404);
     }
 
-    if (session.status !== LiveSessionStatus.LIVE) {
+    // Auto-start: If session is scheduled, has a stream URL, and scheduled time has passed
+    if (
+      session.status === LiveSessionStatus.SCHEDULED &&
+      session.streamUrl &&
+      new Date(session.scheduledAt) <= new Date()
+    ) {
+      session = await LiveSession.findByIdAndUpdate(
+        id,
+        { $set: { status: LiveSessionStatus.LIVE } },
+        { new: true }
+      );
+    }
+
+    // Check if session is live or can be joined
+    if (session!.status !== LiveSessionStatus.LIVE) {
+      // If session has a stream URL and is scheduled for the future, return info for "notify me"
+      if (session!.status === LiveSessionStatus.SCHEDULED && session!.streamUrl) {
+        return errorResponse('Session has not started yet. You will be notified when it begins.', 400);
+      }
       return errorResponse('Session is not currently live', 400);
     }
 
     // Check max attendees
-    if (session.maxAttendees && session.attendeeCount >= session.maxAttendees) {
+    if (session!.maxAttendees && session!.attendeeCount >= session!.maxAttendees) {
       return errorResponse('Session is full', 400);
     }
 
@@ -60,8 +78,8 @@ async function postHandler(request: AuthenticatedRequest, { params }: RouteParam
           _id: attendance._id,
           joinedAt: attendance.joinedAt,
         },
-        streamUrl: session.streamUrl,
-        streamProvider: session.streamProvider,
+        streamUrl: session!.streamUrl,
+        streamProvider: session!.streamProvider,
       },
       'Joined session successfully'
     );
