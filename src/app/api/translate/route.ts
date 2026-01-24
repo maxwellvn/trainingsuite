@@ -32,7 +32,7 @@ const SUPPORTED_LANGUAGE_CODES = new Set([
 
 // Rate limiting - track requests per IP
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
-const RATE_LIMIT = 100; // requests per minute
+const RATE_LIMIT = 500; // requests per minute (increased for batch translations)
 const RATE_WINDOW = 60 * 1000; // 1 minute
 
 function checkRateLimit(ip: string): boolean {
