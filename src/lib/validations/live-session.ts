@@ -10,6 +10,24 @@ const dateTimeSchema = z.string().refine(
   { message: 'Invalid date format' }
 );
 
+// Custom validation for URLs that accepts both full URLs and relative paths (e.g., /uploads/...)
+const urlOrPathSchema = z.string().refine(
+  (val) => {
+    // Accept empty strings
+    if (val === '') return true;
+    // Accept relative paths starting with /
+    if (val.startsWith('/')) return true;
+    // Accept full URLs
+    try {
+      new URL(val);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+  { message: 'Invalid URL or path' }
+);
+
 export const createLiveSessionSchema = z.object({
   title: z
     .string()
@@ -25,7 +43,7 @@ export const createLiveSessionSchema = z.object({
   streamProvider: z.enum(['youtube', 'vimeo', 'hls', 'custom']).default('youtube'),
   scheduledAt: dateTimeSchema,
   duration: z.number().int().min(1).optional(),
-  thumbnail: z.string().url('Invalid thumbnail URL').optional().or(z.literal('')),
+  thumbnail: urlOrPathSchema.optional().or(z.literal('')),
   maxAttendees: z.number().int().min(1).optional(),
 });
 
