@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cache, CACHE_TTL } from '@/lib/redis';
 import crypto from 'crypto';
 
+// Google Translate API configuration
+const GOOGLE_API_KEY = process.env.GOOGLE_TRANSLATE_API_KEY;
+const GOOGLE_TRANSLATE_URL = 'https://translation.googleapis.com/language/translate/v2';
+
 // Supported language codes - comprehensive list matching frontend
 const SUPPORTED_LANGUAGE_CODES = new Set([
   // Major World Languages
@@ -34,16 +38,16 @@ const RATE_WINDOW = 60 * 1000; // 1 minute
 function checkRateLimit(ip: string): boolean {
   const now = Date.now();
   const record = rateLimitMap.get(ip);
-  
+
   if (!record || now > record.resetTime) {
     rateLimitMap.set(ip, { count: 1, resetTime: now + RATE_WINDOW });
     return true;
   }
-  
+
   if (record.count >= RATE_LIMIT) {
     return false;
   }
-  
+
   record.count++;
   return true;
 }
@@ -54,82 +58,122 @@ function getTranslationCacheKey(text: string, from: string, to: string): string 
   return `translation:${from}:${to}:${hash}`;
 }
 
-// Call MyMemory Translation API
-async function translateWithMyMemory(text: string, from: string, to: string): Promise<string> {
-  const params = new URLSearchParams({
-    q: text,
-    langpair: `${from}|${to}`,
-    de: 'training@movortech.com', // Contact email for higher limits
-  });
-
-  const response = await fetch(`https://api.mymemory.translated.net/get?${params}`);
-  
-  if (!response.ok) {
-    throw new Error(`MyMemory API error: ${response.status}`);
+// Call Google Cloud Translation API v2 (REST)
+async function translateWithGoogle(text: string, from: string, to: string): Promise<string> {
+  if (!GOOGLE_API_KEY) {
+    throw new Error('Google Translate API key not configured');
   }
 
-  const data = await response.json();
-  
-  if (data.responseStatus !== 200) {
-    throw new Error(data.responseDetails || 'Translation failed');
-  }
+  try {
+    const response = await fetch(`${GOOGLE_TRANSLATE_URL}?key=${GOOGLE_API_KEY}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        q: text,
+        source: from,
+        target: to,
+        format: 'text',
+      }),
+    });
 
-  return data.responseData.translatedText;
+    if (!response.ok) {
+      const error = await response.json();
+      console.error('Google Translation API error:', error);
+      throw new Error(error.error?.message || 'Translation failed');
+    }
+
+    const data = await response.json();
+    
+    if (!data.data?.translations?.[0]?.translatedText) {
+      throw new Error('No translation returned');
+    }
+
+    return data.data.translations[0].translatedText;
+  } catch (error) {
+    console.error('Google Translation API error:', error);
+    throw error;
+  }
 }
 
-// Batch translate multiple texts
+// Batch translate multiple texts using Google Translate API v2
 async function translateBatch(
-  texts: string[], 
-  from: string, 
+  texts: string[],
+  from: string,
   to: string
 ): Promise<Map<string, string>> {
   const results = new Map<string, string>();
   const toTranslate: string[] = [];
-  
+
   // Check cache first for each text
   for (const text of texts) {
     if (!text.trim()) {
       results.set(text, text);
       continue;
     }
-    
+
     const cacheKey = getTranslationCacheKey(text, from, to);
     const cached = await cache.get<string>(cacheKey);
-    
+
     if (cached) {
       results.set(text, cached);
     } else {
       toTranslate.push(text);
     }
   }
-  
-  // Translate uncached texts (in parallel, but limited)
-  const BATCH_SIZE = 5;
-  for (let i = 0; i < toTranslate.length; i += BATCH_SIZE) {
-    const batch = toTranslate.slice(i, i + BATCH_SIZE);
-    
-    await Promise.all(
-      batch.map(async (text) => {
+
+  // Translate uncached texts using Google's API (supports multiple q params)
+  if (toTranslate.length > 0 && GOOGLE_API_KEY) {
+    try {
+      // Google Translate v2 API supports multiple 'q' parameters for batch translation
+      const response = await fetch(`${GOOGLE_TRANSLATE_URL}?key=${GOOGLE_API_KEY}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          q: toTranslate,
+          source: from,
+          target: to,
+          format: 'text',
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data.data?.translations && data.data.translations.length > 0) {
+          for (let i = 0; i < toTranslate.length; i++) {
+            const translated = data.data.translations[i]?.translatedText || toTranslate[i];
+            results.set(toTranslate[i], translated);
+
+            // Cache the translation (90 days)
+            const cacheKey = getTranslationCacheKey(toTranslate[i], from, to);
+            await cache.set(cacheKey, translated, 90 * 24 * 60 * 60);
+          }
+        }
+      } else {
+        throw new Error('Batch translation request failed');
+      }
+    } catch (error) {
+      console.error('Google batch translation error:', error);
+      // Fall back to individual translations
+      for (const text of toTranslate) {
         try {
-          const translated = await translateWithMyMemory(text, from, to);
+          const translated = await translateWithGoogle(text, from, to);
           results.set(text, translated);
-          
-          // Cache the translation (90 days)
+
           const cacheKey = getTranslationCacheKey(text, from, to);
           await cache.set(cacheKey, translated, 90 * 24 * 60 * 60);
-        } catch (error) {
-          console.error(`Failed to translate: ${text.substring(0, 50)}...`, error);
+        } catch (err) {
+          console.error(`Failed to translate: ${text.substring(0, 50)}...`, err);
           results.set(text, text); // Return original on error
         }
-      })
-    );
-    
-    // Small delay between batches to respect rate limits
-    if (i + BATCH_SIZE < toTranslate.length) {
-      await new Promise(resolve => setTimeout(resolve, 100));
+      }
     }
   }
-  
+
   return results;
 }
 
@@ -148,10 +192,10 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     // Rate limiting
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0] || 
-               request.headers.get('x-real-ip') || 
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0] ||
+               request.headers.get('x-real-ip') ||
                'unknown';
-    
+
     if (!checkRateLimit(ip)) {
       return NextResponse.json(
         { success: false, error: 'Rate limit exceeded. Please try again later.' },
@@ -211,7 +255,7 @@ export async function POST(request: NextRequest) {
       // Check cache
       const cacheKey = getTranslationCacheKey(text, from, to);
       const cached = await cache.get<string>(cacheKey);
-      
+
       if (cached) {
         return NextResponse.json({
           success: true,
@@ -220,8 +264,8 @@ export async function POST(request: NextRequest) {
       }
 
       // Translate
-      const translation = await translateWithMyMemory(text, from, to);
-      
+      const translation = await translateWithGoogle(text, from, to);
+
       // Cache for 90 days
       await cache.set(cacheKey, translation, 90 * 24 * 60 * 60);
 
