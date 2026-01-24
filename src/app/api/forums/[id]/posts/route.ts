@@ -36,7 +36,16 @@ async function getHandler(request: AuthenticatedRequest, { params }: RouteParams
       ForumPost.countDocuments({ forum: forumId }),
     ]);
 
-    return paginatedResponse(posts, { page, limit, total });
+    // Add isLiked field if user is authenticated
+    const postsWithLikeStatus = posts.map(post => {
+      const postObj = post.toObject();
+      if (request.user) {
+        postObj.isLiked = post.likedBy?.some((userId: any) => userId.toString() === request.user!.id) || false;
+      }
+      return postObj;
+    });
+
+    return paginatedResponse(postsWithLikeStatus, { page, limit, total });
   } catch (error) {
     return handleApiError(error);
   }
