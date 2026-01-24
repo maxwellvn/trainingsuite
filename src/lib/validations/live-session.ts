@@ -1,5 +1,15 @@
 import { z } from 'zod';
 
+// Custom datetime validation that accepts both ISO 8601 and datetime-local formats
+const dateTimeSchema = z.string().refine(
+  (val) => {
+    // Try parsing as a date
+    const date = new Date(val);
+    return !isNaN(date.getTime());
+  },
+  { message: 'Invalid date format' }
+);
+
 export const createLiveSessionSchema = z.object({
   title: z
     .string()
@@ -11,11 +21,11 @@ export const createLiveSessionSchema = z.object({
     .max(2000, 'Description cannot exceed 2000 characters')
     .optional(),
   course: z.string().optional(),
-  streamUrl: z.string().url('Invalid stream URL').optional(),
+  streamUrl: z.string().url('Invalid stream URL').optional().or(z.literal('')),
   streamProvider: z.enum(['youtube', 'vimeo', 'hls', 'custom']).default('youtube'),
-  scheduledAt: z.string().datetime('Invalid date format'),
+  scheduledAt: dateTimeSchema,
   duration: z.number().int().min(1).optional(),
-  thumbnail: z.string().url('Invalid thumbnail URL').optional(),
+  thumbnail: z.string().url('Invalid thumbnail URL').optional().or(z.literal('')),
   maxAttendees: z.number().int().min(1).optional(),
 });
 
