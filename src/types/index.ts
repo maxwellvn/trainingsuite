@@ -234,7 +234,7 @@ export interface ILiveSession {
   course?: Types.ObjectId;
   instructor: Types.ObjectId;
   streamUrl?: string;
-  streamProvider?: 'youtube' | 'vimeo' | 'custom';
+  streamProvider?: 'youtube' | 'vimeo' | 'hls' | 'custom';
   scheduledAt: Date;
   duration?: number; // in minutes
   status: LiveSessionStatus;
@@ -283,7 +283,7 @@ export interface ISiteConfig {
   enablePayments: boolean;
   defaultPaymentProvider: 'stripe' | 'paystack';
   enableLiveStreaming: boolean;
-  defaultStreamProvider: 'youtube' | 'vimeo' | 'custom';
+  defaultStreamProvider: 'youtube' | 'vimeo' | 'hls' | 'custom';
   enableForums: boolean;
   enableComments: boolean;
   enableRatings: boolean;

@@ -12,7 +12,7 @@ export const createLiveSessionSchema = z.object({
     .optional(),
   course: z.string().optional(),
   streamUrl: z.string().url('Invalid stream URL').optional(),
-  streamProvider: z.enum(['youtube', 'vimeo', 'custom']).default('youtube'),
+  streamProvider: z.enum(['youtube', 'vimeo', 'hls', 'custom']).default('youtube'),
   scheduledAt: z.string().datetime('Invalid date format'),
   duration: z.number().int().min(1).optional(),
   thumbnail: z.string().url('Invalid thumbnail URL').optional(),

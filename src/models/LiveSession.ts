@@ -27,7 +27,7 @@ const liveSessionSchema = new Schema<ILiveSession>(
     },
     streamProvider: {
       type: String,
-      enum: ['youtube', 'vimeo', 'custom'],
+      enum: ['youtube', 'vimeo', 'hls', 'custom'],
       default: 'youtube',
     },
     scheduledAt: {
