@@ -42,16 +42,15 @@ async function getHandler(request: AuthenticatedRequest, { params }: RouteParams
       modules.map(async (module) => {
         const lessonQuery: Record<string, unknown> = { module: module._id };
 
-        // Only show published lessons to regular users
-        if (!isOwner && !isAdmin && !isInstructor) {
-          lessonQuery.isPublished = true;
-        }
+        // Show all lessons in curriculum for public viewing (metadata only)
+        // The isPublished filter is removed so unauthenticated users can see lesson titles/count
+        // Content and video URLs are still protected below
 
         const lessonQueryBuilder = Lesson.find(lessonQuery).sort({ order: 1 });
 
         // Only exclude content for non-privileged users
         if (!isOwner && !isAdmin && !isInstructor) {
-          lessonQueryBuilder.select('-content');
+          lessonQueryBuilder.select('-content -videoUrl');
         }
 
         const lessons = await lessonQueryBuilder;

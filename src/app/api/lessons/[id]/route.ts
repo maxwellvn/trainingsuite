@@ -5,7 +5,7 @@ import Module from '@/models/Module';
 import Lesson from '@/models/Lesson';
 import Enrollment from '@/models/Enrollment';
 import Notification from '@/models/Notification';
-import { withInstructor, AuthenticatedRequest, optionalAuth } from '@/middleware/auth';
+import { withInstructor, AuthenticatedRequest, withAuth } from '@/middleware/auth';
 import { validateBody } from '@/middleware/validate';
 import { updateLessonSchema } from '@/lib/validations/course';
 import { successResponse, errorResponse, handleApiError } from '@/lib/utils/api-response';
@@ -204,7 +204,7 @@ async function deleteHandler(request: AuthenticatedRequest, { params }: RoutePar
 }
 
 export async function GET(request: NextRequest, context: RouteParams) {
-  return optionalAuth(request, (req) => getHandler(req, context));
+  return withAuth(request, (req) => getHandler(req, context));
 }
 
 export async function PUT(request: NextRequest, context: RouteParams) {
